@@ -2,6 +2,7 @@ package interfaces;
 import java.util.List;
 import java.util.Map;
 
+import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
 import utils.Pair;
@@ -26,7 +27,7 @@ public interface Environment {
 	// returns a map of rewards from agent id to agent reward
 	// side-effect: update locations of agents
 	public Map<Integer, Float> executeActions(Map<Integer, String> actions, 
-									Map<Integer, String> agentTypes);
+									Map<Integer, String> agentTypes) throws InvalidActionException;
 	
 	// allow to change type of a cell location in the environment
 	public void setLocationType(Pair<Integer, Integer> location, int type);

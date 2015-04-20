@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
 import utils.Pair;
@@ -28,6 +29,11 @@ public class Floor implements Environment{
 	private Cell[][] grid;
 	private List<Pair<Integer, Integer>> freeSpaces;
 	Map<Integer, Pair<Integer, Integer>> agentLocations;
+	
+	private final float REWARD_CLEAN_WASTEFUL = (float) -0.5;	// reward for useful clean
+	private final float REWARD_CLEAN_USEFUL = (float) 1.0;		// penalty for wasteful clean
+	private final float REWARD_MOTION = (float) 0.0;				// no penalty on motion	
+	private final float REWARD_NO_MOTION = (float) 0.0;			// no reward on no motion
 
 	// custom comparator that reads in a model and initializes the model
 	public Floor(String modelPath){
@@ -46,7 +52,6 @@ public class Floor implements Environment{
 			grid = new Cell[height][width];
 			freeSpaces = new ArrayList<Pair<Integer, Integer>>();
 			agentLocations = new HashMap<Integer, Pair<Integer, Integer>>();
-			
 			String line = null;
 			
 			input.readLine();
@@ -145,15 +150,16 @@ public class Floor implements Environment{
 	@Override
 	// TODO: Implement
 	public Map<Integer, Float> executeActions(Map<Integer, String> actions,
-			Map<Integer, String> agentTypes) {
+			Map<Integer, String> agentTypes) throws InvalidActionException {
 		// execute action for each specified agent
 		Map<Integer, Float> rewards = new HashMap<Integer, Float>();
 		for(Integer agentId : agentTypes.keySet()){
-			
-			rewards.put(agentId, (float) 1.0);
-			
-		}
-		
+			String agentType = agentTypes.get(agentId);
+			String action = actions.get(agentId);
+			if(!agentType.equals("cleaner") && action.equals("clean"))
+				throw new InvalidActionException();
+			rewards.put(agentId, getReward(agentType, action, agentId));	/* updates locations as a side-effect*/
+		}		
 		return rewards;
 	}
 
@@ -176,6 +182,71 @@ public class Floor implements Environment{
 	@Override
 	public List<Pair<Integer, Integer>> getFreeSpaces() {
 		return this.freeSpaces;
+	}
+	
+	
+	private float getReward(String agentType, String action, int agentId) throws InvalidActionException{
+		Pair<Integer, Integer> currLocation = agentLocations.get(agentId);
+		float reward = (float) 0.0;
+		if(action.equals("clean")){		/* deal with clean action*/	
+			if(grid[currLocation.getFirst()][currLocation.getSecond()].isDirty())
+				reward = REWARD_CLEAN_USEFUL;			
+			else
+				reward = REWARD_CLEAN_WASTEFUL;			
+		}
+		else{											/* deal with motion actions */
+			Pair<Integer, Integer> newLocation = currLocation;
+			int i = currLocation.getFirst();
+			int j = currLocation.getSecond();
+			int dest;
+			reward = REWARD_NO_MOTION;
+			switch(action){
+			case "north":
+				dest = Math.max(i - 1, 0);
+				if(grid[dest][j].getCellType() == 0){	/* destination is free */
+					currLocation.setFirst(dest);		/* update robot location */
+					grid[dest][j].setCellType(2);		/* update dest cell info*/
+					grid[dest][j].setAgentId(agentId);	/* update dest cell info*/
+					grid[i][j].setCellType(0);			/* update source cell info*/
+					reward = REWARD_MOTION;
+				}
+				break;
+			case "south":
+				dest = Math.min(i + 1, dimensions.getFirst() - 1);
+				if(grid[dest][j].getCellType() == 0){	
+					currLocation.setFirst(dest);
+					grid[dest][j].setCellType(2);
+					grid[dest][j].setAgentId(agentId);
+					grid[i][j].setCellType(0);
+					reward = REWARD_MOTION;
+				}
+				break;
+			case "east":
+				dest = Math.min(j + 1, dimensions.getSecond() - 1);
+				if(grid[i][dest].getCellType() == 0){	
+					currLocation.setSecond(dest);
+					grid[i][dest].setCellType(2);
+					grid[i][dest].setAgentId(agentId);
+					grid[i][j].setCellType(0);
+					reward = REWARD_MOTION;
+				}
+				break;
+			case "west":
+				dest = Math.max(j - 1, 0);
+				if(grid[i][dest].getCellType() == 0){	
+					currLocation.setSecond(dest);
+					grid[i][dest].setCellType(2);
+					grid[i][dest].setAgentId(agentId);
+					grid[i][j].setCellType(0);
+					reward = REWARD_MOTION;
+				}
+				break;
+			default:
+				
+			}
+		}
+		return reward;
+		
 	}
 	
 }
