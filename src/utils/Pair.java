@@ -16,4 +16,13 @@ public class Pair<T, Y> {
 	
 	public void setFirst(T first){this.first = first;}
 	public void setSecond(Y second){this.second = second;}
+	
+	public String toString() {return "("+this.first.toString()+","+this.second.toString()+")";}
+	
+	//unit testing
+	public static void main (String []args)
+	{
+		Pair<Integer,Integer> coordinate= new Pair<Integer,Integer>(10,20);
+		System.out.println(coordinate.toString());
+	}
 }
