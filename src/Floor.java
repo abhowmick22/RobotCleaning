@@ -28,11 +28,19 @@ public class Floor implements Environment{
 	private Cell[][] grid;
 	private List<Pair<Integer, Integer>> freeSpaces;
 	Map<Integer, Pair<Integer, Integer>> agentLocations;
+	// Internal transition probability table
+	// given an action we have a prob. distribution over other actions
+	private Map<String, List<Float> > transitionProbs;					
 	
 	private final float REWARD_CLEAN_WASTEFUL = (float) -0.5;	// reward for useful clean
 	private final float REWARD_CLEAN_USEFUL = (float) 1.0;		// penalty for wasteful clean
 	private final float REWARD_MOTION = (float) 0.0;				// no penalty on motion	
 	private final float REWARD_NO_MOTION = (float) 0.0;			// no reward on no motion
+	
+	private final int NORTH_INDEX = 0;
+	private final int SOUTH_INDEX = 1;
+	private final int EAST_INDEX = 2;
+	private final int WEST_INDEX = 3;
 
 	// custom comparator that reads in a model and initializes the model
 	public Floor(String modelPath){
@@ -87,6 +95,35 @@ public class Floor implements Environment{
 		}
 	}
 	
+	// initialize the transition probabilities
+	public void initTransitionProbs(int numActions, float dominantProb){
+		this.transitionProbs = new HashMap<String, List<Float>>();
+		float otherProb = (float) (1.0 - dominantProb) / (numActions - 1);
+		// north
+		List<Float> n = new ArrayList<Float>();
+		for(int i=0; i < numActions; i++)	n.add(otherProb);
+		n.add(NORTH_INDEX, dominantProb);
+		this.transitionProbs.put("north", n);
+		// south
+		List<Float> s = new ArrayList<Float>();
+		for(int i=0; i < numActions; i++)	s.add(otherProb);
+		s.add(SOUTH_INDEX, dominantProb);
+		this.transitionProbs.put("south", s);
+		// east
+		List<Float> e = new ArrayList<Float>();
+		for(int i=0; i < numActions; i++)	e.add(otherProb);
+		e.add(EAST_INDEX, dominantProb);
+		this.transitionProbs.put("east", e);
+		// east
+		List<Float> w = new ArrayList<Float>();
+		for(int i=0; i < numActions; i++)	w.add(otherProb);
+		e.add(WEST_INDEX, dominantProb);
+		this.transitionProbs.put("west", w);
+		
+	}
+	
+	
+	
 	@Override
 	// based on agent types, we can try to come up with more
 	// interesting initializations
@@ -125,15 +162,18 @@ public class Floor implements Environment{
 	}
 
 	@Override
-	// return proper coordinates if type is "viewer", negative values if type is "cleaner" 
-	public Map<Integer, Pair<Integer, Integer>> observeAgentLocations(Map<Integer, String> agentTypes) {
+	// return new co-ordinates based on transition probability table
+	public Map<Integer, Pair<Integer, Integer>> getLocations(Map<Integer, Pair<Integer, Integer> > locations,
+			Map<Integer, String> actions,
+			Map<Integer, String> agentTypes) {
+		/*
 		Map<Integer, Pair<Integer, Integer>> observations = 
 				new HashMap<Integer, Pair<Integer, Integer>>();
 		for(Integer agentId : agentTypes.keySet()){
 			String agentType = agentTypes.get(agentId);
 			Pair<Integer, Integer> trueLocation = agentLocations.get(agentId);
 			Pair<Integer, Integer> resultLocation = new Pair<Integer, Integer>();
-			if(agentType.equals("viewer")){				/* return true location*/
+			if(agentType.equals("viewer")){				/ return true location
 				resultLocation.setFirst(trueLocation.getFirst());
 				resultLocation.setSecond(trueLocation.getSecond());
 			}
@@ -144,11 +184,28 @@ public class Floor implements Environment{
 			observations.put(agentId, resultLocation);
 		}
 		return observations;
+		*/
+		Map<Integer, Pair<Integer, Integer>> newLocations = new HashMap<Integer, Pair<Integer, Integer>>();
+		// for each agent
+		for(Integer agentId : actions.keySet()){
+			// get the intended actions
+			Pair<Integer, Integer> location;
+			try {
+				// get the actual executed action (sampled from transition probability)
+				location = getAgentLocation(agentTypes.get(agentId), actions.get(agentId), agentId);
+				newLocations.put(agentId, location);
+			} catch (InvalidActionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return newLocations;
 	}
 
 	@Override
-	// TODO: Implement
-	public Map<Integer, Float> executeActions(Map<Integer, String> actions,
+	// This is a stochastic function of state action pair
+	public Map<Integer, Float> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
+			Map<Integer, String> actions,
 			Map<Integer, String> agentTypes) throws InvalidActionException {
 		// execute action for each specified agent
 		Map<Integer, Float> rewards = new HashMap<Integer, Float>();
@@ -157,7 +214,7 @@ public class Floor implements Environment{
 			String action = actions.get(agentId);
 			if(!agentType.equals("cleaner") && action.equals("clean"))
 				throw new InvalidActionException();
-			rewards.put(agentId, getReward(agentType, action, agentId));	/* updates locations as a side-effect*/
+			rewards.put(agentId, getAgentReward(agentType, action, agentId));	/* updates locations as a side-effect*/
 		}		
 		return rewards;
 	}
@@ -184,7 +241,8 @@ public class Floor implements Environment{
 	}
 	
 	
-	private float getReward(String agentType, String action, int agentId) throws InvalidActionException{
+	// return the agent location based on transition probability
+	private Pair<Integer, Integer> getAgentLocation(String agentType, String action, int agentId) throws InvalidActionException{
 		Pair<Integer, Integer> currLocation = agentLocations.get(agentId);
 		float reward = (float) 0.0;
 		if(action.equals("clean")){		/* deal with clean action*/	
