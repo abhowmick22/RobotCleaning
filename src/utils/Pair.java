@@ -1,5 +1,6 @@
 package utils;
 
+/* Primarily used for representing coordinates, but can be used for other purposes also*/
 public class Pair<T, Y> {
 	
 	private T first;

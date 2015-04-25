@@ -8,8 +8,8 @@ public class Cell {
 	private float dirtProb;			// probability of dirt
 	private int cellType;				// the type of the cell (free, obstacle or occupied)		
 	private int agentId;				// id of the present agent if occupied, last agent if free, -1 if never visited
-	private boolean dirty;
-	
+	private boolean dirty;				// whether it is dirty
+		
 	public Cell(){
 		this.dirtProb = (float) 0.0;
 		this.cellType = 0;

@@ -15,7 +15,6 @@ import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
 import utils.Pair;
-import interfaces.Environment;
 
 /*
  * An implementation of Environment, models a floor in a building.
@@ -195,7 +194,6 @@ public class Floor implements Environment{
 				reward = REWARD_CLEAN_WASTEFUL;			
 		}
 		else{											/* deal with motion actions */
-			Pair<Integer, Integer> newLocation = currLocation;
 			int i = currLocation.getFirst();
 			int j = currLocation.getSecond();
 			int dest;

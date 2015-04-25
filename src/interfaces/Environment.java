@@ -31,7 +31,7 @@ public interface Environment {
 	
 	// allow to change type of a cell location in the environment
 	public void setLocationType(Pair<Integer, Integer> location, int type);
-	// allow to change prob of dirt at a cell location in the environment
+	// allow to change probability of dirt at a cell location in the environment
 	public void setLocationDirtProb(Pair<Integer, Integer> location, float prob);
 	// get a list of free spaces in the environment
 	public List<Pair<Integer, Integer>> getFreeSpaces();
