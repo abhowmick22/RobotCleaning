@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
+
 import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
@@ -27,10 +29,15 @@ public class Floor implements Environment{
 	private Pair<Integer, Integer> dimensions;
 	private Cell[][] grid;
 	private List<Pair<Integer, Integer>> freeSpaces;
-	Map<Integer, Pair<Integer, Integer>> agentLocations;
+	private Map<Integer, Pair<Integer, Integer>> agentLocations;
 	// Internal transition probability table
-	// given an action we have a prob. distribution over other actions
-	private Map<String, List<Float> > transitionProbs;					
+	// given an action, we have a prob. distribution over other actions
+	private Map<String, EnumeratedDistribution<String>> transitionProbs;	
+	// executing Functions
+	// this method stores whether the agent is executing its actions
+	// that is 'clean' for cleaner and 'observe' for viewer
+	private Map<Integer, Boolean> executingFunction;
+	
 	
 	private final float REWARD_CLEAN_WASTEFUL = (float) -0.5;	// reward for useful clean
 	private final float REWARD_CLEAN_USEFUL = (float) 1.0;		// penalty for wasteful clean
@@ -41,6 +48,8 @@ public class Floor implements Environment{
 	private final int SOUTH_INDEX = 1;
 	private final int EAST_INDEX = 2;
 	private final int WEST_INDEX = 3;
+	
+	private Map<Integer, String> actionsByIndex;
 
 	// custom comparator that reads in a model and initializes the model
 	public Floor(String modelPath){
@@ -56,9 +65,10 @@ public class Floor implements Environment{
 			this.dimensions.setSecond(Integer.parseInt(dims[1]));
 			int width = dimensions.getFirst();
 			int height = dimensions.getSecond();
-			grid = new Cell[height][width];
-			freeSpaces = new ArrayList<Pair<Integer, Integer>>();
-			agentLocations = new HashMap<Integer, Pair<Integer, Integer>>();
+			this.grid = new Cell[height][width];
+			this.freeSpaces = new ArrayList<Pair<Integer, Integer>>();
+			this.agentLocations = new HashMap<Integer, Pair<Integer, Integer>>();
+			this.executingFunction = new HashMap<Integer, Boolean>();
 			String line = null;
 			
 			input.readLine();
@@ -67,7 +77,7 @@ public class Floor implements Environment{
 				line = input.readLine();
 				String[] tokens = line.split(",");
 				
-				// num of cells returned should be equal to width
+				// number of cells returned should be equal to width
 				for(int j=0; j<width; j++){
 					int type = Integer.parseInt(tokens[j]);
 					grid[i][j].setCellType(type);
@@ -81,12 +91,21 @@ public class Floor implements Environment{
 				line = input.readLine();
 				String[] tokens = line.split(",");
 				
-				// num of cells returned should be equal to width
+				// number of cells returned should be equal to width
 				for(int j=0; j<width; j++){
 					grid[i][j].setDirtProb(Float.parseFloat(tokens[j]));
 				}
 			}
 			input.close();
+			
+			// update Actions by Index, should be done through a function
+			this.actionsByIndex = new HashMap<Integer, String>();
+			this.actionsByIndex.put(NORTH_INDEX, "north");
+			this.actionsByIndex.put(SOUTH_INDEX, "south");
+			this.actionsByIndex.put(EAST_INDEX, "east");
+			this.actionsByIndex.put(WEST_INDEX, "west");
+			
+			
 		
 		} catch (FileNotFoundException e) {
 			System.out.println("Model path not found.");
@@ -96,29 +115,53 @@ public class Floor implements Environment{
 	}
 	
 	// initialize the transition probabilities
-	public void initTransitionProbs(int numActions, float dominantProb){
-		this.transitionProbs = new HashMap<String, List<Float>>();
-		float otherProb = (float) (1.0 - dominantProb) / (numActions - 1);
+	public void initTransitionProbs(int numActions, double dominantProb){
+		this.transitionProbs = new HashMap<String, EnumeratedDistribution<String>>();
+		double otherProb = (double) (1.0 - dominantProb) / (numActions - 1);
+		
 		// north
-		List<Float> n = new ArrayList<Float>();
-		for(int i=0; i < numActions; i++)	n.add(otherProb);
-		n.add(NORTH_INDEX, dominantProb);
-		this.transitionProbs.put("north", n);
+		List<org.apache.commons.math3.util.Pair<String, Double>> n = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
+		for(int i=0; i < numActions; i++){
+			if(i == NORTH_INDEX)
+				n.add(new org.apache.commons.math3.util.Pair<String, Double>("north", dominantProb));
+			else
+				n.add(new org.apache.commons.math3.util.Pair<String, Double>(this.actionsByIndex.get(i), otherProb));
+		}
+		EnumeratedDistribution<String> ndist = new EnumeratedDistribution<String>(n);
+		this.transitionProbs.put("north", ndist);
+		
 		// south
-		List<Float> s = new ArrayList<Float>();
-		for(int i=0; i < numActions; i++)	s.add(otherProb);
-		s.add(SOUTH_INDEX, dominantProb);
-		this.transitionProbs.put("south", s);
+		List<org.apache.commons.math3.util.Pair<String, Double>> s = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
+		for(int i=0; i < numActions; i++){
+			if(i == SOUTH_INDEX)
+				s.add(new org.apache.commons.math3.util.Pair<String, Double>("south", dominantProb));
+			else
+				s.add(new org.apache.commons.math3.util.Pair<String, Double>(this.actionsByIndex.get(i), otherProb));
+		}
+		EnumeratedDistribution<String> sdist = new EnumeratedDistribution<String>(s);
+		this.transitionProbs.put("south", sdist);
+		
 		// east
-		List<Float> e = new ArrayList<Float>();
-		for(int i=0; i < numActions; i++)	e.add(otherProb);
-		e.add(EAST_INDEX, dominantProb);
-		this.transitionProbs.put("east", e);
-		// east
-		List<Float> w = new ArrayList<Float>();
-		for(int i=0; i < numActions; i++)	w.add(otherProb);
-		e.add(WEST_INDEX, dominantProb);
-		this.transitionProbs.put("west", w);
+		List<org.apache.commons.math3.util.Pair<String, Double>> e = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
+		for(int i=0; i < numActions; i++){
+			if(i == EAST_INDEX)
+				e.add(new org.apache.commons.math3.util.Pair<String, Double>("east", dominantProb));
+			else
+				e.add(new org.apache.commons.math3.util.Pair<String, Double>(this.actionsByIndex.get(i), otherProb));
+		}
+		EnumeratedDistribution<String> edist = new EnumeratedDistribution<String>(e);
+		this.transitionProbs.put("east", edist);
+		
+		// west
+		List<org.apache.commons.math3.util.Pair<String, Double>> w = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
+		for(int i=0; i < numActions; i++){
+			if(i == WEST_INDEX)
+				w.add(new org.apache.commons.math3.util.Pair<String, Double>("west", dominantProb));
+			else
+				w.add(new org.apache.commons.math3.util.Pair<String, Double>(this.actionsByIndex.get(i), otherProb));
+		}
+		EnumeratedDistribution<String> wdist = new EnumeratedDistribution<String>(w);
+		this.transitionProbs.put("west", wdist);
 		
 	}
 	
@@ -162,38 +205,29 @@ public class Floor implements Environment{
 	}
 
 	@Override
-	// return new co-ordinates based on transition probability table
+	// return new coordinates based on transition probability table
 	public Map<Integer, Pair<Integer, Integer>> getLocations(Map<Integer, Pair<Integer, Integer> > locations,
 			Map<Integer, String> actions,
-			Map<Integer, String> agentTypes) {
-		/*
-		Map<Integer, Pair<Integer, Integer>> observations = 
-				new HashMap<Integer, Pair<Integer, Integer>>();
-		for(Integer agentId : agentTypes.keySet()){
-			String agentType = agentTypes.get(agentId);
-			Pair<Integer, Integer> trueLocation = agentLocations.get(agentId);
-			Pair<Integer, Integer> resultLocation = new Pair<Integer, Integer>();
-			if(agentType.equals("viewer")){				/ return true location
-				resultLocation.setFirst(trueLocation.getFirst());
-				resultLocation.setSecond(trueLocation.getSecond());
-			}
-			else if(agentType.equals("cleaner")){		
-				resultLocation.setFirst(-1);
-				resultLocation.setSecond(-1);
-			}
-			observations.put(agentId, resultLocation);
-		}
-		return observations;
-		*/
+			Map<Integer, String> agentTypes) throws InvalidActionException {
+
 		Map<Integer, Pair<Integer, Integer>> newLocations = new HashMap<Integer, Pair<Integer, Integer>>();
-		// for each agent
 		for(Integer agentId : actions.keySet()){
-			// get the intended actions
-			Pair<Integer, Integer> location;
+			String action = actions.get(agentId);
+			Pair<Integer, Integer> location = locations.get(agentId);
+			String type = agentTypes.get(agentId);
+			
+			// Check if action is valid
+			if(type.equals("cleaner") && action.equals("observe"))
+				throw new InvalidActionException();
+			if(type.equals("viewer") && action.equals("clean"))
+				throw new InvalidActionException();		
+			
+			Pair<Integer, Integer> newLocation = null;
 			try {
 				// get the actual executed action (sampled from transition probability)
-				location = getAgentLocation(agentTypes.get(agentId), actions.get(agentId), agentId);
-				newLocations.put(agentId, location);
+				// side-effect : update AgentLocation and whether it is executing function
+				newLocation = getAgentLocation(location, action, agentId, type);
+				newLocations.put(agentId, newLocation);
 			} catch (InvalidActionException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -204,17 +238,22 @@ public class Floor implements Environment{
 
 	@Override
 	// This is a stochastic function of state action pair
+	// an Assumption is that a cleaner tries to clean whenever it is at a location
 	public Map<Integer, Float> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
-			Map<Integer, String> actions,
-			Map<Integer, String> agentTypes) throws InvalidActionException {
-		// execute action for each specified agent
+			Map<Integer, String> agentTypes) {
+		// get reward for each location
 		Map<Integer, Float> rewards = new HashMap<Integer, Float>();
-		for(Integer agentId : agentTypes.keySet()){
+		for(Integer agentId : locations.keySet()){
 			String agentType = agentTypes.get(agentId);
-			String action = actions.get(agentId);
-			if(!agentType.equals("cleaner") && action.equals("clean"))
-				throw new InvalidActionException();
-			rewards.put(agentId, getAgentReward(agentType, action, agentId));	/* updates locations as a side-effect*/
+			// Check if actions are valid
+			
+			float reward = (float) 0.0;
+			if(grid[locations.get(agentId).getFirst()][locations.get(agentId).getSecond()].isDirty()){
+				if(agentType.equals("cleaner") && executingFunction.get(agentId))	// a cleaner is cleaning at a dirty location
+					reward = REWARD_CLEAN_USEFUL;
+			}
+			// TODO: hand out rewards when viewers are doing useful observations
+			rewards.put(agentId, reward);
 		}		
 		return rewards;
 	}
@@ -241,22 +280,21 @@ public class Floor implements Environment{
 	}
 	
 	
-	// return the agent location based on transition probability
-	private Pair<Integer, Integer> getAgentLocation(String agentType, String action, int agentId) throws InvalidActionException{
-		Pair<Integer, Integer> currLocation = agentLocations.get(agentId);
-		float reward = (float) 0.0;
-		if(action.equals("clean")){		/* deal with clean action*/	
-			if(grid[currLocation.getFirst()][currLocation.getSecond()].isDirty())
-				reward = REWARD_CLEAN_USEFUL;			
-			else
-				reward = REWARD_CLEAN_WASTEFUL;			
+	// return the agent location (new object) based on transition probability
+	private Pair<Integer, Integer> getAgentLocation(Pair<Integer, Integer> location, String action, 
+			int agentId, String agentType) throws InvalidActionException{
+	
+		Pair<Integer, Integer> currLocation = this.agentLocations.get(agentId);
+		if(action.equals("clean") || action.equals("observe")){		
+			this.executingFunction.put(agentId, true);			// set to executing action
 		}
-		else{											/* deal with motion actions */
+		else{											// deal with motion actions
 			int i = currLocation.getFirst();
 			int j = currLocation.getSecond();
 			int dest;
-			reward = REWARD_NO_MOTION;
-			switch(action){
+			String actualAction = this.transitionProbs.get(action).sample();
+			
+			switch(actualAction){
 			case "north":
 				dest = Math.max(i - 1, 0);
 				if(grid[dest][j].getCellType() == 0){	/* destination is free */
@@ -264,7 +302,6 @@ public class Floor implements Environment{
 					grid[dest][j].setCellType(2);		/* update dest cell info*/
 					grid[dest][j].setAgentId(agentId);	/* update dest cell info*/
 					grid[i][j].setCellType(0);			/* update source cell info*/
-					reward = REWARD_MOTION;
 				}
 				break;
 			case "south":
@@ -274,7 +311,6 @@ public class Floor implements Environment{
 					grid[dest][j].setCellType(2);
 					grid[dest][j].setAgentId(agentId);
 					grid[i][j].setCellType(0);
-					reward = REWARD_MOTION;
 				}
 				break;
 			case "east":
@@ -284,7 +320,6 @@ public class Floor implements Environment{
 					grid[i][dest].setCellType(2);
 					grid[i][dest].setAgentId(agentId);
 					grid[i][j].setCellType(0);
-					reward = REWARD_MOTION;
 				}
 				break;
 			case "west":
@@ -294,15 +329,31 @@ public class Floor implements Environment{
 					grid[i][dest].setCellType(2);
 					grid[i][dest].setAgentId(agentId);
 					grid[i][j].setCellType(0);
-					reward = REWARD_MOTION;
 				}
 				break;
 			default:
 				
 			}
 		}
-		return reward;
+		
+		Pair<Integer, Integer> newLocation = new Pair<Integer, Integer>(currLocation.getFirst(),
+														currLocation.getSecond());
+		return newLocation;
+	}
+
+	@Override
+	// For now it just updates dirt
+	public void forwardTime() {
+		for(int i=0; i<dimensions.getFirst(); i++){
+			for(int j=0; j<dimensions.getSecond(); j++){
+				float prob = grid[i][j].getDirtProb();
+				double rand = Math.random();
+				if(rand < prob)		grid[i][j].setDirty();
+				else				grid[i][j].setClean();
+			}
+		}
 		
 	}
+	
 	
 }
