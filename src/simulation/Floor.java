@@ -45,12 +45,12 @@ public class Floor implements Environment{
 	private Pair<Integer, Integer>[] listOfStates;
 	
 	
-	private final double REWARD_CLEAN_WASTEFUL = -0.5;	// reward for useful clean
-	private final double REWARD_CLEAN_USEFUL = 1.0;		// penalty for wasteful clean
+	private final double REWARD_CLEAN_WASTEFUL = -0.5;	// penalty for wasteful clean
+	private final double REWARD_CLEAN_USEFUL = 1.0;		// reward for useful clean
 	private final double REWARD_MOTION = 0.0;				// no penalty on motion	
 	private final double REWARD_NO_MOTION = 0.0;			// no reward on no motion
 	
-	private final double REWARD_OBSERVE_DIRT_HERE = 0.2;
+	private final double REWARD_OBSERVE_DIRT_HERE = 100.0;
 	private final double REWARD_OBSERVE_DIRT_NEAR = 0.2;
 	
 	private final int NORTH_INDEX = 0;
@@ -142,14 +142,17 @@ public class Floor implements Environment{
 			this.actionsByName.put("clean", CLEAN_INDEX);
 			this.actionsByName.put("observe", OBSERVE_INDEX);
 			
-			this.forwardTime();
-			
+			this.motionActions = new String[NUM_MOTION_ACTIONS];
 			this.motionActions[0] = "north";
 			this.motionActions[1] = "south";
 			this.motionActions[2] = "east";
 			this.motionActions[3] = "west";
 			
-		
+			this.goalState = new Pair<Integer, Integer>(0,0);
+			
+			this.forwardTime();
+			
+
 		} catch (FileNotFoundException e) {
 			System.out.println("Model path not found.");
 		} catch (IOException e) {
@@ -231,6 +234,7 @@ public class Floor implements Environment{
 				new HashMap<Integer, Pair<Integer, Integer>>();
 		
 		for(Integer agentId : agentTypes.keySet()){
+			this.executingFunction.put(agentId, false);	// initialize executing function
 			Pair<Integer, Integer> freeCoordinate = freeSpaces.remove(0);
 			int i = freeCoordinate.getFirst();
 			int j = freeCoordinate.getSecond();
@@ -294,7 +298,7 @@ public class Floor implements Environment{
 			double reward = 0.0;
 			if(this.grid[location.getFirst()][location.getSecond()].isDirty()){
 				// get reward for observing dirt here
-				reward += REWARD_OBSERVE_DIRT_HERE;	
+				reward += REWARD_OBSERVE_DIRT_HERE;
 				if(agentType.equals("cleaner") && executingFunction.get(agentId)){	// a cleaner is cleaning at a dirty location
 					reward += REWARD_CLEAN_USEFUL;
 					this.grid[location.getFirst()][location.getSecond()].setClean();

@@ -7,6 +7,8 @@ import java.text.DecimalFormat;
 import java.io.*;
 
 import utils.InvalidActionException;
+import utils.NoFreeSpaceException;
+import utils.OccupiedCellException;
 import utils.Pair;
 
 public class Agent implements AgentInterface{
@@ -16,7 +18,7 @@ public class Agent implements AgentInterface{
 
 	private final DecimalFormat df = new DecimalFormat("#.##");
 	private boolean debug = false;
-	private boolean debug2 = true;
+	private boolean debug2 = false;
 	
 	// These are unique to the agent
 	private Pair<Integer, Integer> currentState;
@@ -94,9 +96,10 @@ public class Agent implements AgentInterface{
 			for (int j=0; j<this.Visittable[i].length; j++)
 				this.Visittable[i][j] = 0.0;
 		
-		if (debug)
+		if (debug){
 			System.out.println("Q-table initialized with size "+this.Qtable.length);
 		    System.out.println("Visited-table initialized with size "+this.Visittable.length);
+		}
 	}
 
 	@Override
@@ -214,8 +217,8 @@ public class Agent implements AgentInterface{
 		
 		//System.out.println("currentrun: "+currentrun);
 		//System.out.println("maxrun: "+maxruns);
-		if (debug)
-			System.out.print("current state = "+current_state.print());
+		//if (debug)
+			//System.out.print("current state = "+current_state.print());
 		int next_action;
 		
 		//Pair goal = new Pair(2,2);
@@ -229,15 +232,15 @@ public class Agent implements AgentInterface{
 			
 			if (debug)
 			{
-				System.out.print("current state = "+current_state.print());
+				//System.out.print("current state = "+current_state.print());
 				//System.out.print(" goal state = "+this.goalState.print());	
 			}
 			//System.out.println("currentrun: "+currentrun_i);
 			next_action = pick_next_action(current_state,maxruns_i,currentrun_i);
 			//epsilon = epsilon/(double)k;
 			
-			if (debug)
-				System.out.println(" next action is "+next_action+" "+this.environment.getActionName(next_action));
+			//if (debug)
+				//System.out.println(" next action is "+next_action+" "+this.environment.getActionName(next_action));
 			// should we do the current_state update here, and 
 			// remove it from the Q_update, i.e., call Q_update
 			// with state,action,state' ? What if the environment.transitionTo
@@ -274,8 +277,8 @@ public class Agent implements AgentInterface{
 			
 			/*-------------------- Wrapper ends ---------------*/
 			
-			if (debug)	
-				System.out.println("end state is "+end_state.print());
+			//if (debug)	
+				//System.out.println("end state is "+end_state.print());
 			
 			//First update Q-value then visits to calculate alpha based on previous visits
 			
@@ -302,11 +305,11 @@ public class Agent implements AgentInterface{
 	
 	
 	@Override
-	public void multiple_runs (int count, Pair<Integer, Integer> state)
+	public void multiple_runs (int count, Pair<Integer, Integer> state, Environment env)
 	{
 		for (int i=0; i<count; i++)
 		{
-			
+			env.forwardTime();
 			single_run(state,count,i);
 			//System.out.println("countrun: "+count);
 		}
@@ -316,8 +319,6 @@ public class Agent implements AgentInterface{
 	@Override
 	public void Q_update (Pair<Integer, Integer> currentState, int action)
 	{
-		if (debug)
-			System.out.println("Updating");
 		
 		double currentQ = this.Qtable[this.environment.stateToIndex(currentState)][action];
 		double currentAlpha = 1/(this.Visittable[this.environment.stateToIndex(currentState)][action]+1.0);
@@ -365,8 +366,8 @@ public class Agent implements AgentInterface{
 	@Override
 	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState)
 	{
-		if (debug)
-			System.out.println("Updating");
+		//if (debug)
+			//System.out.println("Updating");
 		
 		double currentQ = this.Qtable[this.environment.stateToIndex(currentState)][action];
 		//Calculate alpha
@@ -408,13 +409,13 @@ public class Agent implements AgentInterface{
 	// conversions for types, from ints to strings and reverse
 	public int stringTypeToInt (String type)
 	{
-		if (type.equals("Cleaner")) return 0;
+		if (type.equals("cleaner")) return 0;
 		else return 1;
 	}
 	public String intTypeToString (int type)
 	{
-		if (type == 0) return "Cleaner";
-		else return "Viewer";
+		if (type == 0) return "cleaner";
+		else return "viewer";
 	}
 	
 	@Override
@@ -547,6 +548,7 @@ public class Agent implements AgentInterface{
 		try {
 		    out = new PrintWriter(new BufferedWriter(new FileWriter("Visitstables.txt", true)));
 		    out.println(s+"\r\n"+this.printVisittable());
+		    out.flush();
 		}catch (IOException e) {
 		    System.err.println(e);
 		}finally{
@@ -558,34 +560,38 @@ public class Agent implements AgentInterface{
 	// conversions for action names, use the ones of the environment
 	
 	// unit testing 
-	public static void main (String [] args)
+	public static void main (String [] args) throws NoFreeSpaceException, OccupiedCellException
 	{
 		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
 		
+		
 		//environment.printTransitionTable();
 		//environment.printRewards();
-		Pair<Integer, Integer> state = 
+		Pair<Integer, Integer> start_state = 
 				new Pair<Integer, Integer>(env.getFirstSize()-1,env.getSecondSize()-1);
-		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, state, 0);
+		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, start_state, 0);
+		
+		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
+		agentTypes.put(0, "cleaner");
+		env.initAgentLocations(agentTypes);
+		env.initTransitionProbs(0.99);
 		//agent.printTransitionTableenvironment();
 		agent.printQtable();
 		agent.printVisittable();
-		System.out.println("=================");
 		//agent.single_step(agent.getCurrentState(),agent.environment.decodeAction("right"));
 		//agent.single_step(agent.getCurrentState());
 		//agent.single_run(agent.getCurrentState());
 		//System.out.println(agent.printQtable());
 		String s = " ============== ";
-		int runs = 100;
+		int runs = 1500;
 		for (int i =0; i< 1; i++)
 		{
 			agent.resetQtable();
 			agent.resetVisittable();
-			agent.multiple_runs(runs, agent.getCurrentState());	
+			agent.multiple_runs(runs, agent.getCurrentState(), env);	
 			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
 			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
 		}
-		
 	}
 
 	@Override

@@ -72,7 +72,7 @@ public class FloorTests {
 					System.out.println("Actions are " + actions.toString());
 					
 					locations = ((Floor) env).getLocations(locations, actions, agentTypes);
-					Map<Integer, Float> rewards = ((Floor) env).getRewards(locations, agentTypes);
+					Map<Integer, Double> rewards = ((Floor) env).getRewards(locations, agentTypes);
 					System.out.println("After step");
 					System.out.println("Agent locations are " + locations.toString());
 					System.out.println("Agent rewards are " + rewards.toString());

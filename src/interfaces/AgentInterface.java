@@ -21,7 +21,7 @@ public interface AgentInterface {
 	public void single_run (Pair<Integer, Integer> state, int maxruns, int currentrun); 
 	
 	// run "count" episodes from a start state till you reach the end state
-	public void multiple_runs (int count, Pair<Integer, Integer> state);
+	public void multiple_runs (int count, Pair<Integer, Integer> state, Environment env);
 	
 	// update Q-table given a state and action
 	public void Q_update (Pair<Integer, Integer> currentState, int action);
