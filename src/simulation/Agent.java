@@ -1,13 +1,18 @@
 package simulation;
+import interfaces.AgentInterface;
 import interfaces.Environment;
 
 import java.util.*;
 import java.text.DecimalFormat;
 import java.io.*;
 
+import utils.InvalidActionException;
 import utils.Pair;
 
-public class Agent {
+public class Agent implements AgentInterface{
+	
+	// id of the agent
+	private int agentId;
 
 	private final DecimalFormat df = new DecimalFormat("#.##");
 	private boolean debug = false;
@@ -21,10 +26,9 @@ public class Agent {
 	private int Type;
 	private String TypeName;
 	
-	// These are going to be taken by the world
+	// These are going to be taken by the environment
 	// when we initialize the agent
 	// state is pair <x,y>
-	private World world;
 	private Environment environment;
 	private Pair<Integer, Integer>[] listOfStates;
 	// size of X-dimension
@@ -64,16 +68,16 @@ public class Agent {
 	
 	
 	// constructor with normal inits
-	public Agent (World world,Environment env, String type, double alpha, double gamma, Pair init_state)
+	public Agent (Environment env, String type, double alpha, double gamma, Pair init_state, int agentId)
 	{
-		this.world = world;
+		this.agentId = agentId;
 		this.environment = env;
 		this.currentState = init_state;
 		this.Type = this.stringTypeToInt(type);
 		this.TypeName = type;
-		this.listOfStates = world.getListOfStates();
-		this.Actions = env.getActions();
-		this.ActionsNames = env.getActionNames();
+		this.listOfStates = env.getListOfStates();
+		this.Actions = this.environment.getAvailableActionIndices(this.TypeName);
+		this.ActionsNames = this.environment.getAvailableActions(this.TypeName);
 		this.goalState = env.getGoalState();
 		this.alpha = alpha;
 		this.gamma = gamma;
@@ -95,12 +99,13 @@ public class Agent {
 		    System.out.println("Visited-table initialized with size "+this.Visittable.length);
 	}
 
-	
+	@Override
 	public Pair<Integer, Integer> getGoalState ()
 	{
 		return this.goalState;
 	}
 	
+	@Override
 	//Pick action based on e-greedy policy: choose action based on max q-value with probability 1-e and choose a (uniform) random action with probability e
 	public int pick_next_action (Pair<Integer, Integer> state, int maxruns, int currentrun)
 	{
@@ -110,7 +115,7 @@ public class Agent {
 		
 		// first sort the array
 		// max value will be last
-		double [] temp = this.Qtable[this.world.stateToIndex(state)].clone();
+		double [] temp = this.Qtable[this.environment.stateToIndex(state)].clone();
 		Arrays.sort(temp);
 		
 		//Generate a random number double between 0 and 1
@@ -145,9 +150,9 @@ public class Agent {
 		int random_index = (int)(Math.random() * (counter + 1));
 		
 		// find the index of the (random) max action and return it
-		for (int i=0;i<this.Qtable[this.world.stateToIndex(state)].length; i++)
+		for (int i=0;i<this.Qtable[this.environment.stateToIndex(state)].length; i++)
 		{
-			if (this.Qtable[this.world.stateToIndex(state)][i] == temp[temp.length-1])
+			if (this.Qtable[this.environment.stateToIndex(state)][i] == temp[temp.length-1])
 			{
 				if (random_index == 0)
 				{
@@ -176,11 +181,11 @@ public class Agent {
 			
 			// should we do the current_state update here, and 
 			// remove it from the Q_update, i.e., call Q_update
-			// with state,action,state' ? What if the world.transitionTo
+			// with state,action,state' ? What if the environment.transitionTo
 			// returns two different results on the two calls? due to 
 			// stochastic transitions?
 			//Q_update (current_state,next_action);
-			//current_state = this.world.transitionTo(current_state, next_action);
+			//current_state = this.environment.transitionTo(current_state, next_action);
 		
 	}
 	
@@ -192,14 +197,16 @@ public class Agent {
 			//next_action = pick_next_action(current_state);
 			// should we do the current_state update here, and 
 			// remove it from the Q_update, i.e., call Q_update
-			// with state,action,state' ? What if the world.transitionTo
+			// with state,action,state' ? What if the environment.transitionTo
 			// returns two different results on the two calls? due to 
 			// stochastic transitions?
 			//Q_update (current_state,next_action);
-			//current_state = this.world.transitionTo(current_state, next_action);
+			//current_state = this.environment.transitionTo(current_state, next_action);
 		
 	}
 	
+	
+	@Override
 	public void single_run (Pair<Integer, Integer> state, int maxruns, int currentrun) 
 	{
 		Pair<Integer, Integer> current_state = state.copy();
@@ -230,10 +237,10 @@ public class Agent {
 			//epsilon = epsilon/(double)k;
 			
 			if (debug)
-				System.out.println(" next action is "+next_action+" "+this.world.getActionName(next_action));
+				System.out.println(" next action is "+next_action+" "+this.environment.getActionName(next_action));
 			// should we do the current_state update here, and 
 			// remove it from the Q_update, i.e., call Q_update
-			// with state,action,state' ? What if the world.transitionTo
+			// with state,action,state' ? What if the environment.transitionTo
 			// returns two different results on the two calls? due to 
 			// stochastic transitions?
 			/*if (next_action == 3) 
@@ -241,12 +248,32 @@ public class Agent {
 				Pair temp = new Pair(1,0);
 				current_state.print();
 				if (current_state.equals(temp))
-					end_state = this.world.transitionTo(current_state, next_action);
+					end_state = this.environment.transitionTo(current_state, next_action);
 				else 
-					end_state = this.world.transitionTo(new Pair(current_state.getX(), current_state.getY()), next_action);
+					end_state = this.environment.transitionTo(new Pair(current_state.getX(), current_state.getY()), next_action);
 			}			
-			else*/			
-			end_state = this.world.transitionTo(current_state, next_action);
+			else*/		
+			
+			/*------------------- A wrapper for the interface --------------*/
+			Map<Integer, Pair<Integer, Integer>> s = new HashMap<Integer, Pair<Integer, Integer>>();
+			Map<Integer, String> a = new HashMap<Integer, String>();
+			Map<Integer, String> type = new HashMap<Integer, String>();
+			s.put(this.agentId, current_state);
+			a.put(this.agentId, this.environment.getActionName(next_action));
+			type.put(this.agentId, "cleaner");
+			
+			Map<Integer, Pair<Integer, Integer>> end;
+			end_state = null;
+			try {
+				end = this.environment.getLocations(s, a, type);
+				end_state = end.get(this.agentId);
+			} catch (InvalidActionException e) {
+				e.printStackTrace();
+				System.out.println("You are committing a crime.");
+			}
+			
+			/*-------------------- Wrapper ends ---------------*/
+			
 			if (debug)	
 				System.out.println("end state is "+end_state.print());
 			
@@ -256,9 +283,9 @@ public class Agent {
 			A_update (current_state,next_action);
 			
 			if(debug2)
-			System.out.println(current_state.print() +"-> "+this.world.getActionName(next_action)+"->"+end_state.print());
+			System.out.println(current_state.print() +"-> "+this.environment.getActionName(next_action)+"->"+end_state.print());
 			current_state = end_state;
-			//current_state = this.world.transitionTo(currentState, next_action);
+			//current_state = this.environment.transitionTo(currentState, next_action);
 			k= k+1;
 			//
 			//epsilon = epsilon/(double)k;
@@ -274,7 +301,7 @@ public class Agent {
 	}
 	
 	
-	
+	@Override
 	public void multiple_runs (int count, Pair<Integer, Integer> state)
 	{
 		for (int i=0; i<count; i++)
@@ -286,69 +313,98 @@ public class Agent {
 		
 	}
 	
-	
+	@Override
 	public void Q_update (Pair<Integer, Integer> currentState, int action)
 	{
 		if (debug)
 			System.out.println("Updating");
 		
-		double currentQ = this.Qtable[this.world.stateToIndex(currentState)][action];
-		double currentAlpha = 1/(this.Visittable[this.world.stateToIndex(currentState)][action]+1.0);
+		double currentQ = this.Qtable[this.environment.stateToIndex(currentState)][action];
+		double currentAlpha = 1/(this.Visittable[this.environment.stateToIndex(currentState)][action]+1.0);
 		//currentQ = (1-this.alpha)*currentQ;
 		// get the target state s'
-		Pair<Integer, Integer> endState = this.world.transitionTo(currentState, action);
+		
+		/*------------------- A wrapper for the interface --------------*/
+		Map<Integer, Pair<Integer, Integer>> s = new HashMap<Integer, Pair<Integer, Integer>>();
+		Map<Integer, String> a = new HashMap<Integer, String>();
+		Map<Integer, String> type = new HashMap<Integer, String>();
+		s.put(this.agentId, currentState);
+		a.put(this.agentId, this.environment.getActionName(action));
+		type.put(this.agentId, "cleaner");
+		
+		Pair<Integer, Integer> endState = null;
+		try {
+			endState = this.environment.getLocations(s, a, type).get(this.agentId);
+		} catch (InvalidActionException e) {
+			e.printStackTrace();
+			System.out.println("FOCK OFF!");
+		}
+		/*-------------------- Wrapper ends ---------------*/
+		
 		// get the reward of the end state s'
-		double reward = this.world.getReward(endState);
+		/* --------------Wrapper for getRewards-----------------*/
+		Map<Integer, Pair<Integer, Integer>> l = new HashMap<Integer, Pair<Integer, Integer>>();
+		Map<Integer, String> t = new HashMap<Integer, String>();
+		l.put(this.agentId, endState);
+		t.put(this.agentId, "cleaner");
+		double reward = this.environment.getRewards(l, t).get(this.agentId);
 		
 		// find the max value from the end state s'
-		//List temp = Arrays.asList(this.Qtable[this.world.stateToIndex(endState)]);
+		//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
 		//double max_step = (double) Collections.max(temp);
-		double [] temp = this.Qtable[this.world.stateToIndex(endState)].clone();
+		double [] temp = this.Qtable[this.environment.stateToIndex(endState)].clone();
 		Arrays.sort(temp);
 		double max_step = temp[temp.length-1];
 		
 		// calculate new q-value
-		this.Qtable[this.world.stateToIndex(currentState)][action] =  
+		this.Qtable[this.environment.stateToIndex(currentState)][action] =  
 				currentQ + (currentAlpha*(reward + (this.gamma*max_step - currentQ) ));
 		//this.Qtable[0][0] = 1000.0;
 	}
 	
+	@Override
 	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState)
 	{
 		if (debug)
 			System.out.println("Updating");
 		
-		double currentQ = this.Qtable[this.world.stateToIndex(currentState)][action];
+		double currentQ = this.Qtable[this.environment.stateToIndex(currentState)][action];
 		//Calculate alpha
-		double currentAlpha = 1/(this.Visittable[this.world.stateToIndex(currentState)][action]+1.0);
+		double currentAlpha = 1/(this.Visittable[this.environment.stateToIndex(currentState)][action]+1.0);
 		//currentQ = (1-this.alpha)*currentQ;
 		// get the target state s'
-		//State endState = this.world.transitionTo(currentState, action);
+		//State endState = this.environment.transitionTo(currentState, action);
 		// get the reward of the end state s'
-		double reward = this.world.getReward(endState);
+		/* --------------Wrapper for getRewards-----------------*/
+		Map<Integer, Pair<Integer, Integer>> l = new HashMap<Integer, Pair<Integer, Integer>>();
+		Map<Integer, String> t = new HashMap<Integer, String>();
+		l.put(this.agentId, endState);
+		t.put(this.agentId, "cleaner");
+		double reward = this.environment.getRewards(l, t).get(this.agentId);
 		
 		// find the max value from the end state s'
-		//List temp = Arrays.asList(this.Qtable[this.world.stateToIndex(endState)]);
+		//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
 		//double max_step = (double) Collections.max(temp);
-		double [] temp = this.Qtable[this.world.stateToIndex(endState)].clone();
+		double [] temp = this.Qtable[this.environment.stateToIndex(endState)].clone();
 		Arrays.sort(temp);
 		double max_step = temp[temp.length-1];
 		
 		//Calculate alpha
-		//alpha = this.Visittable[this.world.stateToIndex(endState)][action];
+		//alpha = this.Visittable[this.environment.stateToIndex(endState)][action];
 		
 		// calculate new q-value
-		this.Qtable[this.world.stateToIndex(currentState)][action] =  
+		this.Qtable[this.environment.stateToIndex(currentState)][action] =  
 				currentQ + (currentAlpha*(reward + (this.gamma*max_step - currentQ) ));
 		//this.Qtable[0][0] = 1000.0;
 	}
 	
 	public void A_update (Pair<Integer, Integer> currentState, int action)
 	{
-		double currentVisits = this.Visittable[this.world.stateToIndex(currentState)][action];
+		double currentVisits = this.Visittable[this.environment.stateToIndex(currentState)][action];
 		currentVisits = currentVisits+1;
-		this.Visittable[this.world.stateToIndex(currentState)][action] = currentVisits;
+		this.Visittable[this.environment.stateToIndex(currentState)][action] = currentVisits;
 	}
+	
 	// conversions for types, from ints to strings and reverse
 	public int stringTypeToInt (String type)
 	{
@@ -361,6 +417,7 @@ public class Agent {
 		else return "Viewer";
 	}
 	
+	@Override
 	public String printQtable ()
 	{
 		String qtable = "";
@@ -371,11 +428,11 @@ public class Agent {
 				qtable+="   ";
 				for (int j=0; j< this.Qtable[i].length; j++)
 				{
-					qtable+=this.world.getActionName(j)+" ";
+					qtable+=this.environment.getActionName(j)+" ";
 				}
 				qtable+="\r\n";
 			}
-			qtable += this.world.indexToState(i).print()+" ";
+			qtable += this.environment.indexToState(i).print()+" ";
 			for (int j=0; j< this.Qtable[i].length; j++)
 			{
 				qtable += df.format(this.Qtable[i][j])+" ";
@@ -385,6 +442,7 @@ public class Agent {
 		return qtable;
 	}
 	
+	@Override
 	public String printVisittable ()
 	{
 		String Visittable = "";
@@ -395,11 +453,11 @@ public class Agent {
 				Visittable+="   ";
 				for (int j=0; j< this.Visittable[i].length; j++)
 				{
-					Visittable+=this.world.getActionName(j)+" ";
+					Visittable+=this.environment.getActionName(j)+" ";
 				}
 				Visittable+="\r\n";
 			}
-			Visittable += this.world.indexToState(i).print()+" ";
+			Visittable += this.environment.indexToState(i).print()+" ";
 			for (int j=0; j< this.Visittable[i].length; j++)
 			{
 				Visittable += df.format(this.Visittable[i][j])+" ";
@@ -410,22 +468,31 @@ public class Agent {
 	}
 	
 	
-	
-	public void printTransitionTableWorld()
+	public void printTransitionTableenvironment()
 	{
-		this.world.printTransitionTable();
+		//this.environment.printTransitionTable();
 	}
 	
+	@Override
 	public Pair<Integer, Integer> getCurrentState()
 	{
 		return this.currentState;
 	}
+	
+	@Override
+	// getter for agentId
+	public int getAgentId(){
+		return this.agentId;
+	}
+	
+	@Override
 	// setter for debugging
 	public void setCurrentState(Pair<Integer, Integer> q)
 	{
 		this.currentState = q;
 	}
 	
+	@Override
 	public void resetQtable()
 	{
 		for (int i=0; i< this.Qtable.length; i++)
@@ -433,6 +500,7 @@ public class Agent {
 				this.Qtable[i][j] = 0.0;
 	}
 	
+	@Override
 	public void resetVisittable()
 	{
 		for (int i=0; i< this.Visittable.length; i++)
@@ -440,6 +508,7 @@ public class Agent {
 				this.Visittable[i][j] = 0.0;
 	}
 	
+	@Override
 	public void SaveToFile()
 	{
 		PrintWriter out = null;
@@ -455,6 +524,7 @@ public class Agent {
 		} 
 	}
 	
+	@Override
 	public void SaveToFileQ(String s)
 	{
 		PrintWriter out = null;
@@ -470,6 +540,7 @@ public class Agent {
 		} 
 	}
 	
+	@Override
 	public void SaveToFileVisits(String s)
 	{
 		PrintWriter out = null;
@@ -484,24 +555,23 @@ public class Agent {
 		    }
 		} 
 	}
-	// conversions for action names, use the ones of the world
+	// conversions for action names, use the ones of the environment
 	
 	// unit testing 
 	public static void main (String [] args)
 	{
-		World world = new World(new Pair<Integer, Integer> (2,2));
 		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
 		
-		//world.printTransitionTable();
-		//world.printRewards();
+		//environment.printTransitionTable();
+		//environment.printRewards();
 		Pair<Integer, Integer> state = 
-				new Pair<Integer, Integer>(env.getDimensions().getFirst()-1,env.getDimensions().getSecond()-1);
-		Agent agent = new Agent(world, env, "cleaner", 0.1, 0.9, state);
-		//agent.printTransitionTableWorld();
+				new Pair<Integer, Integer>(env.getFirstSize()-1,env.getSecondSize()-1);
+		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, state, 0);
+		//agent.printTransitionTableenvironment();
 		agent.printQtable();
 		agent.printVisittable();
 		System.out.println("=================");
-		//agent.single_step(agent.getCurrentState(),agent.world.decodeAction("right"));
+		//agent.single_step(agent.getCurrentState(),agent.environment.decodeAction("right"));
 		//agent.single_step(agent.getCurrentState());
 		//agent.single_run(agent.getCurrentState());
 		//System.out.println(agent.printQtable());
@@ -515,6 +585,12 @@ public class Agent {
 			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
 			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
 		}
+		
+	}
+
+	@Override
+	public void printTransitionTableWorld() {
+		// TODO Auto-generated method stub
 		
 	}
 	

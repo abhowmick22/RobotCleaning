@@ -35,7 +35,7 @@ public interface Environment {
 	// returns a map of rewards from agent id to agent reward
 	// r(S,a)
 	// Returned rewards will be deterministic
-	public Map<Integer, Float> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
+	public Map<Integer, Double> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
 									Map<Integer, String> agentTypes);
 	
 	// update time of the environment, to be called by simulator
@@ -59,9 +59,11 @@ public interface Environment {
 	// get the goal state as decided by environment (a high reward sink)
 	public Pair<Integer, Integer> getGoalState();
 	// get actions allowed in environment
-	public int[] getActions();
+	public int[] getAvailableActionIndices(String agentType);
 	// get the names of actions allowed in environment
-	public String[] getActionNames();
+	public String[] getAvailableActions(String agentType);
+	// get action corresponding to an index
+	public String getActionName (int action);
 	// given an action return its integer index
 	public int decodeAction (String action);
 	// Go from (x,y) coordinates to State's index

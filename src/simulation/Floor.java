@@ -45,22 +45,25 @@ public class Floor implements Environment{
 	private Pair<Integer, Integer>[] listOfStates;
 	
 	
-	private final float REWARD_CLEAN_WASTEFUL = (float) -0.5;	// reward for useful clean
-	private final float REWARD_CLEAN_USEFUL = (float) 1.0;		// penalty for wasteful clean
-	private final float REWARD_MOTION = (float) 0.0;				// no penalty on motion	
-	private final float REWARD_NO_MOTION = (float) 0.0;			// no reward on no motion
+	private final double REWARD_CLEAN_WASTEFUL = -0.5;	// reward for useful clean
+	private final double REWARD_CLEAN_USEFUL = 1.0;		// penalty for wasteful clean
+	private final double REWARD_MOTION = 0.0;				// no penalty on motion	
+	private final double REWARD_NO_MOTION = 0.0;			// no reward on no motion
 	
-	private final float REWARD_OBSERVE_DIRT_HERE = (float) 0.2;
-	private final float REWARD_OBSERVE_DIRT_NEAR = (float) 0.2;
+	private final double REWARD_OBSERVE_DIRT_HERE = 0.2;
+	private final double REWARD_OBSERVE_DIRT_NEAR = 0.2;
 	
 	private final int NORTH_INDEX = 0;
 	private final int SOUTH_INDEX = 1;
 	private final int EAST_INDEX = 2;
 	private final int WEST_INDEX = 3;
+	private final int CLEAN_INDEX = 4;
+	private final int OBSERVE_INDEX = 5;
 	
 	private final int NUM_MOTION_ACTIONS = 4;
 	
 	private Map<Integer, String> actionsByIndex;
+	private Map<String, Integer> actionsByName;
 	private String[] motionActions;
 	
 	// The final high reward state 
@@ -115,12 +118,29 @@ public class Floor implements Environment{
 			}
 			input.close();
 			
+			// declare list of states needed by the agent
+			listOfStates = new Pair [this.dimensions.getFirst()*this.dimensions.getSecond()];
+			for (int i=0; i<3;i++)
+				for (int j=0; j<3; j++)
+					listOfStates[(i*3)+j] = new Pair<Integer, Integer>(i,j); // create table of pairs
+			
 			// update Actions by Index, should be done through a function
 			this.actionsByIndex = new HashMap<Integer, String>();
 			this.actionsByIndex.put(NORTH_INDEX, "north");
 			this.actionsByIndex.put(SOUTH_INDEX, "south");
 			this.actionsByIndex.put(EAST_INDEX, "east");
 			this.actionsByIndex.put(WEST_INDEX, "west");
+			this.actionsByIndex.put(CLEAN_INDEX, "clean");
+			this.actionsByIndex.put(OBSERVE_INDEX, "observe");
+			
+			// update Actions by name, should be done through a function
+			this.actionsByName = new HashMap<String, Integer>();
+			this.actionsByName.put("north", NORTH_INDEX);
+			this.actionsByName.put("south", SOUTH_INDEX);
+			this.actionsByName.put("east", EAST_INDEX);
+			this.actionsByName.put("west", WEST_INDEX);
+			this.actionsByName.put("clean", CLEAN_INDEX);
+			this.actionsByName.put("observe", OBSERVE_INDEX);
 			
 			this.forwardTime();
 			
@@ -253,8 +273,8 @@ public class Floor implements Environment{
 				newLocation = getAgentLocation(location, action, agentId, type);
 				newLocations.put(agentId, newLocation);
 			} catch (InvalidActionException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
+				System.out.print("This is not your personal property! You can't go ahead trying to do anything.");
 			}
 		}
 		return newLocations;
@@ -263,15 +283,15 @@ public class Floor implements Environment{
 	@Override
 	// This is a stochastic function of state action pair
 	// dirty state of the world is updated here on clean
-	public Map<Integer, Float> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
+	public Map<Integer, Double> getRewards(Map<Integer, Pair<Integer, Integer> > locations,
 			Map<Integer, String> agentTypes) {
 		// get reward for each location
-		Map<Integer, Float> rewards = new HashMap<Integer, Float>();
+		Map<Integer, Double> rewards = new HashMap<Integer, Double>();
 		for(Integer agentId : locations.keySet()){
 			String agentType = agentTypes.get(agentId);
 			Pair<Integer, Integer> location = locations.get(agentId);
 			
-			float reward = (float) 0.0;
+			double reward = 0.0;
 			if(this.grid[location.getFirst()][location.getSecond()].isDirty()){
 				// get reward for observing dirt here
 				reward += REWARD_OBSERVE_DIRT_HERE;	
@@ -291,7 +311,6 @@ public class Floor implements Environment{
 			// we wouldn't have seen dirt due to the cleaner)
 			if(agentType.equals("viewer"))
 				reward += viewerObserve(location)*REWARD_OBSERVE_DIRT_NEAR;
-			// TODO: hand out rewards when viewers are doing useful observations
 			rewards.put(agentId, reward);
 		}		
 		return rewards;
@@ -427,7 +446,6 @@ public class Floor implements Environment{
 	}
 
 	public void printCurrentDirtState() {
-		// TODO Auto-generated method stub
 		System.out.print("\n--------The current Dirt State is--------------\n");
 		for(int i=0; i<dimensions.getFirst(); i++){
 			for(int j=0; j<dimensions.getSecond(); j++){
@@ -469,7 +487,6 @@ public class Floor implements Environment{
 	}
 	
 	public void printCurrCellTypes() {
-		// TODO Auto-generated method stub
 		System.out.print("\n--------The current cell types are--------------\n");
 		for(int i=0; i<dimensions.getFirst(); i++){
 			for(int j=0; j<dimensions.getSecond(); j++){
@@ -484,56 +501,85 @@ public class Floor implements Environment{
 
 	@Override
 	public Pair<Integer, Integer>[] getListOfStates() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.listOfStates;
 	}
 
 	@Override
 	public int getFirstSize() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.dimensions.getFirst();
 	}
 
 	@Override
 	public int getSecondSize() {
-		// TODO Auto-generated method stub
-		return 0;
+		return this.dimensions.getSecond();
 	}
 
 	@Override
 	public Pair<Integer, Integer> getGoalState() {
-		// TODO Auto-generated method stub
-		return null;
+		return this.goalState;
 	}
 
 	@Override
-	public int[] getActions() {
-		// TODO Auto-generated method stub
-		return null;
+	public int[] getAvailableActionIndices(String agentType) {
+		int[] actions = new int[NUM_MOTION_ACTIONS + 1];
+		actions[0] = NORTH_INDEX;
+		actions[1] = SOUTH_INDEX;
+		actions[2] = EAST_INDEX;
+		actions[3] = WEST_INDEX;
+		if(agentType.equals("cleaner"))
+			actions[4] = CLEAN_INDEX;
+		else if(agentType.equals("viewer"))
+			actions[4] = OBSERVE_INDEX;
+		else
+			actions[4] = -1;						// should throw error for unknown action
+		
+		return actions;
 	}
 
 	@Override
-	public String[] getActionNames() {
-		// TODO Auto-generated method stub
-		return null;
+	public String[] getAvailableActions(String agentType) {
+		List<String> result = new ArrayList<String>(this.motionActions.length + 1);
+		Collections.addAll(result, this.motionActions);
+		if(agentType.equals("cleaner"))
+			Collections.addAll(result, "clean");
+		else if(agentType.equals("viewer"))
+			Collections.addAll(result, "observe");
+		else
+			Collections.addAll(result, "unknown action");
+		return result.toArray(new String[result.size()]);
 	}
 
 	@Override
 	public int decodeAction(String action) {
-		// TODO Auto-generated method stub
-		return 0;
+		int result = -1;
+		switch (action)
+		{
+			case "north": result=  0;
+				break;
+			case "south" : result = 1;
+				break;
+			case "east" : result =  2;
+				break;
+			case "west" : result=  3;
+				break;
+		}	
+		return result;
 	}
 
 	@Override
 	public int stateToIndex(Pair<Integer, Integer> state) {
-		// TODO Auto-generated method stub
-		return 0;
+		return (((int)state.getFirst()*this.dimensions.getFirst())+(int)state.getSecond());
 	}
 
 	@Override
 	public Pair<Integer, Integer> indexToState(int state) {
-		// TODO Auto-generated method stub
-		return null;
+		int factor = state/this.dimensions.getFirst();
+		return (new Pair<Integer, Integer> (factor, state-(this.dimensions.getFirst()*factor)));
+	}
+
+	@Override
+	public String getActionName(int action) {
+		return this.actionsByIndex.get(action);
 	}
 	
 }
