@@ -582,4 +582,9 @@ public class Floor implements Environment{
 		return this.actionsByIndex.get(action);
 	}
 	
+	@Override
+	public int getActionIndex(String action) {
+		return this.actionsByName.get(action);
+	}
+	
 }
