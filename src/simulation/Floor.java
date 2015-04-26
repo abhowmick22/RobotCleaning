@@ -23,7 +23,7 @@ import utils.Pair;
 
 /*
  * An implementation of Environment, models a floor in a building.
- * Properties : static, non adversarial
+ * Properties : static, non-adversarial
  * Every cell generates dirt per second according to its dirt probability
  * 
  */
@@ -46,6 +46,9 @@ public class Floor implements Environment{
 	private final float REWARD_CLEAN_USEFUL = (float) 1.0;		// penalty for wasteful clean
 	private final float REWARD_MOTION = (float) 0.0;				// no penalty on motion	
 	private final float REWARD_NO_MOTION = (float) 0.0;			// no reward on no motion
+	
+	private final float REWARD_OBSERVE_DIRT_HERE = (float) 0.2;
+	private final float REWARD_OBSERVE_DIRT_NEAR = (float) 0.2;
 	
 	private final int NORTH_INDEX = 0;
 	private final int SOUTH_INDEX = 1;
@@ -70,7 +73,7 @@ public class Floor implements Environment{
 			this.dimensions.setSecond(Integer.parseInt(dims[1]));
 			int width = dimensions.getFirst();
 			int height = dimensions.getSecond();
-			this.grid = new Cell[height][width];
+			this.grid = new Cell[width][height];
 			this.freeSpaces = new ArrayList<Pair<Integer, Integer>>();
 			this.agentLocations = new HashMap<Integer, Pair<Integer, Integer>>();
 			this.executingFunction = new HashMap<Integer, Boolean>();
@@ -257,20 +260,52 @@ public class Floor implements Environment{
 		Map<Integer, Float> rewards = new HashMap<Integer, Float>();
 		for(Integer agentId : locations.keySet()){
 			String agentType = agentTypes.get(agentId);
-			// Check if actions are valid
+			Pair<Integer, Integer> location = locations.get(agentId);
 			
 			float reward = (float) 0.0;
-			if(this.grid[locations.get(agentId).getFirst()][locations.get(agentId).getSecond()].isDirty()){
+			if(this.grid[location.getFirst()][location.getSecond()].isDirty()){
+				// get reward for observing dirt here
+				reward += REWARD_OBSERVE_DIRT_HERE;	
 				if(agentType.equals("cleaner") && executingFunction.get(agentId)){	// a cleaner is cleaning at a dirty location
-					reward = REWARD_CLEAN_USEFUL;
-					this.grid[locations.get(agentId).getFirst()][locations.get(agentId).getSecond()].setClean();
+					reward += REWARD_CLEAN_USEFUL;
+					this.grid[location.getFirst()][location.getSecond()].setClean();
 					this.executingFunction.put(agentId, false);
 				}
 			}
+			else{
+				if(agentType.equals("cleaner") && executingFunction.get(agentId)){
+					reward += REWARD_CLEAN_WASTEFUL;
+					this.executingFunction.put(agentId, false);
+				}
+			}
+			// get rewards for observation (doesn't matter if we do this before cleaning since
+			// we wouldn't have seen dirt due to the cleaner)
+			if(agentType.equals("viewer"))
+				reward += viewerObserve(location)*REWARD_OBSERVE_DIRT_NEAR;
 			// TODO: hand out rewards when viewers are doing useful observations
 			rewards.put(agentId, reward);
 		}		
 		return rewards;
+	}
+
+	// return number of neighbors that has dirt
+	private int viewerObserve(Pair<Integer, Integer> location) {
+		int result = 0;
+		Cell nbr = null;
+		
+		nbr = grid[Math.max(location.getFirst()-1, 0)][location.getSecond()];
+		if(nbr.isDirty() && nbr.getCellType() == 0)	result += 1;	// can only observe dirt is unobstructed and free
+	
+		nbr = grid[Math.min(location.getFirst()+1, this.dimensions.getFirst()-1)][location.getSecond()];
+		if(nbr.isDirty() && nbr.getCellType() == 0)	result += 1;
+		
+		nbr = grid[location.getFirst()][Math.min(location.getSecond()+1, this.dimensions.getSecond()-1)];
+		if(nbr.isDirty() && nbr.getCellType() == 0)	result += 1;	// can only observe dirt is unobstructed and free
+	
+		nbr = grid[location.getFirst()][Math.max(location.getSecond()-1, 0)];
+		if(nbr.isDirty() && nbr.getCellType() == 0)	result += 1;
+		
+		return result;
 	}
 
 	@Override
