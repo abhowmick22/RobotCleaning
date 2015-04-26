@@ -45,6 +45,9 @@ public interface AgentInterface {
 	// get agent's id
 	public int getAgentId();
 
+	// get agent's type
+	public String getAgentType();
+	
 	// setter for debugging
 	public void setCurrentState(Pair<Integer, Integer> q);
 

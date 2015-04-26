@@ -486,6 +486,10 @@ public class Agent implements AgentInterface{
 		return this.agentId;
 	}
 	
+	public String getAgentType(){
+		return this.TypeName;
+	}
+	
 	@Override
 	// setter for debugging
 	public void setCurrentState(Pair<Integer, Integer> q)
