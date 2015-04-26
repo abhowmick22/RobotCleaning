@@ -64,6 +64,8 @@ public interface Environment {
 	public String[] getAvailableActions(String agentType);
 	// get action corresponding to an index
 	public String getActionName (int action);
+	// get action index corresponding to name
+	public int getActionIndex(String action);
 	// given an action return its integer index
 	public int decodeAction (String action);
 	// Go from (x,y) coordinates to State's index
