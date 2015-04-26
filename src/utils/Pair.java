@@ -18,7 +18,39 @@ public class Pair<T, Y> {
 	public void setFirst(T first){this.first = first;}
 	public void setSecond(Y second){this.second = second;}
 	
-	public String toString() {return "("+this.first.toString()+","+this.second.toString()+")";}
+	
+	public String print(){
+		return ("("+this.getFirst().toString() + ","+ this.getSecond().toString() + ")");
+	}
+	
+
+	public boolean equals(Object other) 
+	{
+	 	if (other instanceof Pair) 
+	  	{
+	  		Pair<?, ?> otherPair = (Pair<?, ?>) other;
+	  		return ((  this.getFirst().equals(otherPair.getFirst())) && 
+	  				(this.getSecond().equals(otherPair.getSecond())));
+	  	}
+	  	return false;
+	}
+	  
+	  public Pair<T, Y> copy ()
+	  {
+		  return new Pair<T, Y> (this.getFirst(), this.getSecond());
+	  }
+	  
+	  public Pair<T, Y> copy (Pair<T, Y> otherPair)
+	  {
+		  return new Pair<T, Y> (otherPair.getFirst(), otherPair.getSecond());
+	  }
+	  
+	  protected Object clone() throws CloneNotSupportedException 
+	  {
+	      return super.clone();
+	  }
+	
+	public String toString() {return "("+this.getFirst().toString()+","+this.getSecond().toString()+")";}
 	
 	//unit testing
 	public static void main (String []args)
