@@ -16,7 +16,7 @@ import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
 import utils.Pair;
-import interfaces.AgentGroup;
+import interfaces.FactoredAgent;
 import interfaces.Environment;
 
 
@@ -27,7 +27,7 @@ import interfaces.Environment;
 public class Simulator {
 	
 	// entities with following interfaces are must for simulation
-	private static AgentGroup robots;
+	private static FactoredAgent robots;
 	private static Environment env;
 	
 	// Simulation variables
