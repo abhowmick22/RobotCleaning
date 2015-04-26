@@ -16,9 +16,7 @@ public class FloorTests {
 	private static Environment env;
 	
 	// Simulation variables
-	private static int NUM_ACTIONS = 4;
 	private static double dominantProbability = 0.85;
-	
 	
 	public static void main(String[] args){
 		
@@ -30,7 +28,7 @@ public class FloorTests {
 				//((Floor) env).printCurrentDirtState();
 				
 				
-				((Floor) env).initTransitionProbs(NUM_ACTIONS, dominantProbability);
+				((Floor) env).initTransitionProbs(dominantProbability);
 				// create agent types
 				Map<Integer, String> agentTypes = new HashMap<Integer, String>();
 				agentTypes.put(0, "viewer");

@@ -13,6 +13,7 @@ import utils.Pair;
  */
 public interface Environment {
 	
+	
 	// return a randomized initial location of agents in the environment
 	public Map<Integer, Pair<Integer, Integer> > initAgentLocations(Map<Integer, String> agentTypes) 
 			throws NoFreeSpaceException, OccupiedCellException;
@@ -20,7 +21,7 @@ public interface Environment {
 	// initialize the transition probabilities, this interface is subject to change
 	// pass in the number of actions, this will allot dominant probability to the intended
 	// action and distribute the remaining prob. over all other actions
-	public void initTransitionProbs(int numActions, double dominantProb);
+	public void initTransitionProbs(double dominantProb);
 	
 	// return location of all agents in the environment (S,a) -> S'
 	// based on the agent types (limited or partial observability)
@@ -47,6 +48,32 @@ public interface Environment {
 	public void setLocationDirtProb(Pair<Integer, Integer> location, float prob);
 	// get a list of free spaces in the environment
 	public List<Pair<Integer, Integer>> getFreeSpaces();
+	
+	/* ------------ These were added for compatibility with Yannis' version -----------------*/
+	// get list of all locations/states
+	public Pair<Integer, Integer>[] getListOfStates();
+	// get the width
+	public int getFirstSize();
+	// get the height
+	public int getSecondSize();
+	// get the goal state as decided by environment (a high reward sink)
+	public Pair<Integer, Integer> getGoalState();
+	// get actions allowed in environment
+	public int[] getActions();
+	// get the names of actions allowed in environment
+	public String[] getActionNames();
+	// given an action return its integer index
+	public int decodeAction (String action);
+	// Go from (x,y) coordinates to State's index
+	public int stateToIndex (Pair<Integer, Integer> state);
+	// Go from state index to (x,y) coordinate
+	public Pair<Integer, Integer> indexToState (int state);
+	// printing functions 
+	/*
+	public void printTransitionTable();
+	public void printRewards();
+	*/
+	
 	
 	
 }

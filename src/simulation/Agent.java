@@ -1,4 +1,6 @@
 package simulation;
+import interfaces.Environment;
+
 import java.util.*;
 import java.text.DecimalFormat;
 import java.io.*;
@@ -14,7 +16,7 @@ public class Agent {
 	// These are unique to the agent
 	private Pair<Integer, Integer> currentState;
 	private int[] Types ={0,1};
-	private String[] TypesName = {"Cleaner", "Viewer"};
+	private String[] TypesName = {"cleaner", "viewer"};
 	
 	private int Type;
 	private String TypeName;
@@ -23,6 +25,7 @@ public class Agent {
 	// when we initialize the agent
 	// state is pair <x,y>
 	private World world;
+	private Environment environment;
 	private Pair<Integer, Integer>[] listOfStates;
 	// size of X-dimension
 	private int xSize;
@@ -61,16 +64,17 @@ public class Agent {
 	
 	
 	// constructor with normal inits
-	public Agent (World world, String type, double alpha, double gamma, Pair init_state)
+	public Agent (World world,Environment env, String type, double alpha, double gamma, Pair init_state)
 	{
 		this.world = world;
+		this.environment = env;
 		this.currentState = init_state;
 		this.Type = this.stringTypeToInt(type);
 		this.TypeName = type;
 		this.listOfStates = world.getListOfStates();
-		this.Actions = world.getActions();
-		this.ActionsNames = world.getActionsNames();
-		this.goalState = world.getGoalState();
+		this.Actions = env.getActions();
+		this.ActionsNames = env.getActionNames();
+		this.goalState = env.getGoalState();
 		this.alpha = alpha;
 		this.gamma = gamma;
 		//init Q-table
@@ -486,10 +490,13 @@ public class Agent {
 	public static void main (String [] args)
 	{
 		World world = new World(new Pair<Integer, Integer> (2,2));
+		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
+		
 		//world.printTransitionTable();
 		//world.printRewards();
-		Pair<Integer, Integer> state = new Pair<Integer, Integer>(0,0);
-		Agent agent = new Agent(world, "Cleaner", 0.1, 0.9, state);
+		Pair<Integer, Integer> state = 
+				new Pair<Integer, Integer>(env.getDimensions().getFirst()-1,env.getDimensions().getSecond()-1);
+		Agent agent = new Agent(world, env, "cleaner", 0.1, 0.9, state);
 		//agent.printTransitionTableWorld();
 		agent.printQtable();
 		agent.printVisittable();

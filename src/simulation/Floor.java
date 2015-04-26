@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,6 +41,8 @@ public class Floor implements Environment{
 	// this method stores whether the agent is executing its actions
 	// that is 'clean' for cleaner and 'observe' for viewer
 	private Map<Integer, Boolean> executingFunction;
+	// provide a list of all locations to agent
+	private Pair<Integer, Integer>[] listOfStates;
 	
 	
 	private final float REWARD_CLEAN_WASTEFUL = (float) -0.5;	// reward for useful clean
@@ -55,8 +58,13 @@ public class Floor implements Environment{
 	private final int EAST_INDEX = 2;
 	private final int WEST_INDEX = 3;
 	
+	private final int NUM_MOTION_ACTIONS = 4;
+	
 	private Map<Integer, String> actionsByIndex;
-	private Set<String> motionActions;
+	private String[] motionActions;
+	
+	// The final high reward state 
+	private Pair<Integer, Integer> goalState;
 
 	// custom comparator that reads in a model and initializes the model
 	public Floor(String modelPath){
@@ -115,11 +123,12 @@ public class Floor implements Environment{
 			this.actionsByIndex.put(WEST_INDEX, "west");
 			
 			this.forwardTime();
-			motionActions = new HashSet<String>();
-			motionActions.add("north");
-			motionActions.add("south");
-			motionActions.add("east");
-			motionActions.add("west");
+			
+			this.motionActions[0] = "north";
+			this.motionActions[1] = "south";
+			this.motionActions[2] = "east";
+			this.motionActions[3] = "west";
+			
 		
 		} catch (FileNotFoundException e) {
 			System.out.println("Model path not found.");
@@ -129,13 +138,13 @@ public class Floor implements Environment{
 	}
 	
 	// initialize the transition probabilities
-	public void initTransitionProbs(int numActions, double dominantProb){
+	public void initTransitionProbs(double dominantProb){
 		this.transitionProbs = new HashMap<String, EnumeratedDistribution<String>>();
-		double otherProb = (double) (1.0 - dominantProb) / (numActions - 1);
+		double otherProb = (double) (1.0 - dominantProb) / (NUM_MOTION_ACTIONS - 1);
 		
 		// north
 		List<org.apache.commons.math3.util.Pair<String, Double>> n = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
-		for(int i=0; i < numActions; i++){
+		for(int i=0; i < NUM_MOTION_ACTIONS; i++){
 			if(i == NORTH_INDEX)
 				n.add(new org.apache.commons.math3.util.Pair<String, Double>("north", dominantProb));
 			else
@@ -146,7 +155,7 @@ public class Floor implements Environment{
 		
 		// south
 		List<org.apache.commons.math3.util.Pair<String, Double>> s = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
-		for(int i=0; i < numActions; i++){
+		for(int i=0; i < NUM_MOTION_ACTIONS; i++){
 			if(i == SOUTH_INDEX)
 				s.add(new org.apache.commons.math3.util.Pair<String, Double>("south", dominantProb));
 			else
@@ -157,7 +166,7 @@ public class Floor implements Environment{
 		
 		// east
 		List<org.apache.commons.math3.util.Pair<String, Double>> e = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
-		for(int i=0; i < numActions; i++){
+		for(int i=0; i < NUM_MOTION_ACTIONS; i++){
 			if(i == EAST_INDEX)
 				e.add(new org.apache.commons.math3.util.Pair<String, Double>("east", dominantProb));
 			else
@@ -168,7 +177,7 @@ public class Floor implements Environment{
 		
 		// west
 		List<org.apache.commons.math3.util.Pair<String, Double>> w = new ArrayList<org.apache.commons.math3.util.Pair<String, Double>>();
-		for(int i=0; i < numActions; i++){
+		for(int i=0; i < NUM_MOTION_ACTIONS; i++){
 			if(i == WEST_INDEX)
 				w.add(new org.apache.commons.math3.util.Pair<String, Double>("west", dominantProb));
 			else
@@ -337,7 +346,7 @@ public class Floor implements Environment{
 			int j = currLocation.getSecond();
 			int dest;
 			String actualAction = null;
-			if(motionActions.contains(action ))
+			if(new HashSet<String>(Arrays.asList(motionActions)).contains(action ))
 				actualAction = this.transitionProbs.get(action).sample();
 			else
 				actualAction = action;
@@ -471,6 +480,60 @@ public class Floor implements Environment{
 		}
 		
 		System.out.print("\n---------------------------------------\n");
+	}
+
+	@Override
+	public Pair<Integer, Integer>[] getListOfStates() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getFirstSize() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int getSecondSize() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public Pair<Integer, Integer> getGoalState() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int[] getActions() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public String[] getActionNames() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int decodeAction(String action) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public int stateToIndex(Pair<Integer, Integer> state) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public Pair<Integer, Integer> indexToState(int state) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 	
 }
