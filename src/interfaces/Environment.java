@@ -48,9 +48,5 @@ public interface Environment {
 	// get a list of free spaces in the environment
 	public List<Pair<Integer, Integer>> getFreeSpaces();
 	
-	// print dirt model that is read from file
-	public void printModel();
-	public void printCurrentState();
-	public void printAgentLocations();
 	
 }
