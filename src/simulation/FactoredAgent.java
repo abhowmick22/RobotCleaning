@@ -319,11 +319,11 @@ public class FactoredAgent //implements AgentInterface{
 	
 	
 	//@Override
-	public void multiple_runs (int count, Map<Integer, Pair<Integer,Integer>> state)
+	public void multiple_runs (int count, Map<Integer, Pair<Integer,Integer>> state, Environment env)
 	{
 		for (int i=0; i<count; i++)
 		{
-			
+			env.forwardTime();
 			single_run(state,count,i);
 			//System.out.println("countrun: "+count);
 		}
@@ -593,7 +593,7 @@ public class FactoredAgent //implements AgentInterface{
 		{
 			agent.resetQtable();
 			agent.resetVisittable();
-			agent.multiple_runs(runs, agent.getCurrentState());	
+			agent.multiple_runs(runs, agent.getCurrentState(), env);	
 			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
 			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
 		}
