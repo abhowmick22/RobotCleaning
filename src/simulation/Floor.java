@@ -590,5 +590,11 @@ public class Floor implements Environment{
 	public int getActionIndex(String action) {
 		return this.actionsByName.get(action);
 	}
+
+	@Override
+	public String[] getAllActions() {
+		Set<String> actions = this.actionsByName.keySet();
+		return actions.toArray(new String[actions.size()]);
+	}
 	
 }

@@ -227,6 +227,7 @@ public class Agent implements AgentInterface{
 		
 		while (!current_state.equals(this.getGoalState())) //this.goalState)
 		{
+			this.environment.forwardTime();
 			int currentrun_i = currentrun;
 			int maxruns_i = maxruns;
 			
@@ -305,11 +306,10 @@ public class Agent implements AgentInterface{
 	
 	
 	@Override
-	public void multiple_runs (int count, Pair<Integer, Integer> state, Environment env)
+	public void multiple_runs (int count, Pair<Integer, Integer> state)
 	{
 		for (int i=0; i<count; i++)
 		{
-			env.forwardTime();
 			single_run(state,count,i);
 			//System.out.println("countrun: "+count);
 		}
@@ -592,7 +592,7 @@ public class Agent implements AgentInterface{
 		{
 			agent.resetQtable();
 			agent.resetVisittable();
-			agent.multiple_runs(runs, agent.getCurrentState(), env);	
+			agent.multiple_runs(runs, agent.getCurrentState());	
 			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
 			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
 		}

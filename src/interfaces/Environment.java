@@ -20,7 +20,7 @@ public interface Environment {
 	
 	// initialize the transition probabilities, this interface is subject to change
 	// pass in the number of actions, this will allot dominant probability to the intended
-	// action and distribute the remaining prob. over all other actions
+	// action and distribute the remaining probability over all other actions
 	public void initTransitionProbs(double dominantProb);
 	
 	// return location of all agents in the environment (S,a) -> S'
@@ -58,10 +58,12 @@ public interface Environment {
 	public int getSecondSize();
 	// get the goal state as decided by environment (a high reward sink)
 	public Pair<Integer, Integer> getGoalState();
-	// get actions allowed in environment
+	// get actions allowed for agent in environment
 	public int[] getAvailableActionIndices(String agentType);
-	// get the names of actions allowed in environment
+	// get the names of actions allowed for this agent in environment
 	public String[] getAvailableActions(String agentType);
+	// get all possible actions in the environment
+	public String[] getAllActions();
 	// get action corresponding to an index
 	public String getActionName (int action);
 	// get action index corresponding to name

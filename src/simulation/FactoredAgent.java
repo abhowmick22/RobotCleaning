@@ -1,9 +1,14 @@
 package simulation;
+import utils.Combinations;
 import utils.InvalidActionException;
+import utils.NoFreeSpaceException;
+import utils.OccupiedCellException;
 import utils.Pair;
 import interfaces.Environment;
-import interfaces.AgentInterface;
 //import utils.State;
+
+
+
 
 
 
@@ -15,14 +20,13 @@ import java.text.DecimalFormat;
 import java.util.*;
 
 
-
 public class FactoredAgent //implements AgentInterface{
 {
 	// list of agents
-	private ArrayList<Agent> listOfAgents;
+	private List<Agent> listOfAgents;
 	
-	// id of the agent
-	private int agentId;
+	// ids of the agents
+	//private ArrayList<Integer> agentIds;
 	
 	private final DecimalFormat df = new DecimalFormat("#.##");
 	private boolean debug = false;
@@ -33,7 +37,7 @@ public class FactoredAgent //implements AgentInterface{
 	private  Map<Integer, String> agentTypes;
 	//private String TypeName;
 
-	// These are unique to the agent
+	// These are unique to the factored agent
 	// The current and final states 
 	private Map<Integer, Pair<Integer,Integer>> currentState;
 	private Map<Integer, Pair<Integer,Integer>> goalState;
@@ -52,24 +56,23 @@ public class FactoredAgent //implements AgentInterface{
 	//private String[] ActionsNames;
 
 	// List of states and actions for the Q-Table
-	private ArrayList<Map<Integer, Pair<Integer,Integer>>> listOfStates;
-	private ArrayList<Map <Integer,String>> listOfActions;	
+	private List<Map<Integer, Pair<Integer,Integer>>> listOfStates;
+	private List<Map<Integer, String>> listOfActions;	
 
 		
 	// initial alpha and gamma and initial epsilon for calculating the Q-table
-	private double alpha = 1;
+	private double alpha = 0.1;
 	private double gamma = 0.9; 
 	private double epsilon = 0.3;
 	
 	private int k = 0;
 
-
 	// Q-table both global and local
-	public double [][] Qtable = new double [0][0];// = new double [States.length][Actions.length];
+	public double [][] Qtable;				// = new double [States.length][Actions.length];
 	//public double [][] QJointtable = new double [0][0]; // Joint q table
 	
 	// Alpha-Table: Tracks number of visits to each state
-	public double [][] Visittable = new double [0][0];
+	public double [][] Visittable;
 	
 	// CONSTRUCTORS
 	// default constructor empty
@@ -78,17 +81,21 @@ public class FactoredAgent //implements AgentInterface{
 	
 	// constructor with normal inits
 	public FactoredAgent (Environment env, 
-			//String type, 
 			double alpha, double gamma, 
-			Map<Integer, Pair<Integer,Integer>> init_state, 
-			int agentId,
-			Agent a)
+			Map<Integer, Pair<Integer,Integer>> init_state,
+			List<Agent> agents)
 	{
-		this.agentId = agentId;
+		this.listOfAgents = new ArrayList<Agent>();
+		this.agentTypes = new HashMap<Integer, String>();
+		this.currentState = new HashMap<Integer, Pair<Integer, Integer>>();
+		this.goalState = new HashMap<Integer, Pair<Integer, Integer>>();
+		this.listOfStates = new ArrayList<Map<Integer, Pair<Integer,Integer>>>();
+		this.listOfActions = new ArrayList<Map<Integer, String>>();
+		
 		this.environment = env;
 		this.currentState = init_state;
 		// call to inserting an agent in the list 
-		this.addAgent(a);
+		this.addMultipleAgent(agents);
 		
 		//this.Type = this.stringTypeToInt(type);
 		//this.TypeName = type;
@@ -99,7 +106,6 @@ public class FactoredAgent //implements AgentInterface{
 		this.gamma = gamma;
 		//init Q-table
 		this.Qtable = new double[this.listOfStates.size()][this.listOfActions.size()];
-				
 		for (int i=0; i< this.Qtable.length; i++)
 			for (int j=0; j<this.Qtable[i].length; j++)
 				this.Qtable[i][j] = 0.0;
@@ -126,36 +132,84 @@ public class FactoredAgent //implements AgentInterface{
 	public void addAgent (Agent a)
 	{
 		this.listOfAgents.add(a);
-		this.addStates(environment.getListOfStates(),a.getAgentId());
-		this.addActions(environment.getAvailableActions(a.getAgentType()),a.getAgentId());	
 		this.goalState.put(a.getAgentId(), a.getGoalState()) ;
 		this.agentTypes.put(a.getAgentId(), a.getAgentType());
 	}
 	
-	private void addStates (Pair<Integer, Integer>[] listOfNewStates, Integer agentId)
+	// TODO : Debug the next two methods
+	private void addStates (Pair<Integer, Integer>[] individualListOfStates)
 	{
-		for (Map<Integer, Pair<Integer,Integer>> old_state : this.listOfStates)
-			for (Pair<Integer, Integer> state : listOfNewStates)
-				old_state.put(agentId, state);			
-	}
-	
-	private void addActions (String[] listOfActions, Integer agentId)
-	{
-		for (Map <Integer,String> old_actions : this.listOfActions)
-			for (String action : listOfActions)
-				old_actions.put(agentId, action);			
+		int numAgents = this.listOfAgents.size();
+		// get all possible state subsequences from listOfStates
+		List<List<Pair<Integer, Integer>>> subs = 
+				Combinations.getAllSubSequences(Arrays.asList(individualListOfStates), numAgents);
+		// for each of these lists, create a map pairing and add to listOfStates
+		for(List<Pair<Integer, Integer>> list : subs){
+			Map<Integer, Pair<Integer, Integer>> newFactoredState
+				= new HashMap<Integer, Pair<Integer, Integer>>();
+			for(int i=0;i<numAgents; i++){
+				newFactoredState.put(this.listOfAgents.get(i).getAgentId(),
+											list.get(i));
+			}
+			this.listOfStates.add(newFactoredState);
+		}
 		
 	}
 	
+	private void addActions (Map<Integer, List<String>> allActionsForAgent)
+	{
+		int numAgents = this.listOfAgents.size();
+		// get all possible actions in environment
+		String[] allActions = this.environment.getAllActions();
+		
+		// get all possible action subsequences
+		List<List<String>> subs = 
+				Combinations.getAllSubSequences(Arrays.asList(allActions), numAgents);
+		// for each of these lists
+		for(List<String> list : subs){
+			// check if it is a valid action subsequence
+			if(!isValidSubSequence(allActionsForAgent, list, this.listOfAgents))	continue;
+			Map<Integer, String> newFactoredAction
+				= new HashMap<Integer, String>();
+			for(int i=0;i<numAgents; i++){
+				newFactoredAction.put(this.listOfAgents.get(i).getAgentId(),
+											list.get(i));
+			}
+			this.listOfActions.add(newFactoredAction);
+		}
+	}
+	
+	// helper method to check if an action subsequence is valid
+	private boolean isValidSubSequence(Map<Integer, List<String>>allActions, 
+			List<String> candidateActions, List<Agent> listOfAgents){
+			boolean result = true;
+			int numAgents = listOfAgents.size();
+			for(int i=0; i<numAgents; i++){
+				int agentId = listOfAgents.get(i).getAgentId();
+				Set<String> allowedActions = new HashSet<String>(allActions.get(agentId));
+				String candidateAction = candidateActions.get(i);
+				if(!allowedActions.contains(candidateAction)){
+					result = false;
+					break;
+				}
+				
+			}
+			return result;
+	}
 	
 	// Adds an array of agents to the factored 
 	// agent, by adding them one by one
-	public void addMultipleAgent (Agent[] agents)
+	public void addMultipleAgent (List<Agent> agents)
 	{
-		for (Agent a : agents)
+		Map<Integer, List<String>> allPossibleActions = new 
+				HashMap<Integer, List<String>>();
+		for (Agent a : agents){
 			this.addAgent(a);
+			allPossibleActions.put(a.getAgentId(), Arrays.asList(environment.getAvailableActions(a.getAgentType())));
+		}
+		this.addStates(environment.getListOfStates());				// all agents will have same possible states
+		this.addActions(allPossibleActions);	
 	}
-	
 
 	
 	//@Override
@@ -205,8 +259,8 @@ public class FactoredAgent //implements AgentInterface{
 		
 		//Choose action based on max Q value with (1-e) prob
 		else{
-		// count the number of max values 
-		// and choose randomly if there are multiple actions
+		// count the number of actions with max values 
+		// and choose randomly if there are multiple such actions
 		int counter = 0;
 		int index = (temp.length)-1;
 		while( (index-1 >= 0) && (temp[index-1] == temp[index] ))
@@ -260,6 +314,7 @@ public class FactoredAgent //implements AgentInterface{
 		
 		while (!current_state.equals(this.getGoalState())) //this.goalState)
 		{
+			this.environment.forwardTime();
 			int currentrun_i = currentrun;
 			int maxruns_i = maxruns;
 			
@@ -306,7 +361,7 @@ public class FactoredAgent //implements AgentInterface{
 			k= k+1;
 			//
 			//epsilon = epsilon/(double)k;
-			epsilon = epsilon*0.999;
+			epsilon = epsilon*0.999;				// consider changing to k-1/k for all epsilon			
 			
 		}
 		
@@ -319,11 +374,10 @@ public class FactoredAgent //implements AgentInterface{
 	
 	
 	//@Override
-	public void multiple_runs (int count, Map<Integer, Pair<Integer,Integer>> state, Environment env)
+	public void multiple_runs (int count, Map<Integer, Pair<Integer,Integer>> state)
 	{
 		for (int i=0; i<count; i++)
 		{
-			env.forwardTime();
 			single_run(state,count,i);
 			//System.out.println("countrun: "+count);
 		}
@@ -350,7 +404,7 @@ public class FactoredAgent //implements AgentInterface{
 			System.out.println("FOCK OFF!");
 		}
 		
-		Map<Integer, Double> rewards = this.environment.getRewards(currentState, action);
+		Map<Integer, Double> rewards = this.environment.getRewards(endState, action);
 		double reward = 0.0;
 		for (Double value : rewards.values())
 			reward+=value;
@@ -405,22 +459,19 @@ public class FactoredAgent //implements AgentInterface{
 	
 	public void A_update (Map<Integer, Pair<Integer,Integer>> currentState, Map <Integer,String> action)
 	{
-		double currentVisits = 
-				this.Visittable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)];
-		currentVisits = currentVisits+1;
-		this.Visittable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)] = currentVisits;
+		this.Visittable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)]++;
 	}
 	
 	// conversions for types, from ints to strings and reverse
 	public int stringTypeToInt (String type)
 	{
-		if (type.equals("Cleaner")) return 0;
+		if (type.equals("cleaner")) return 0;
 		else return 1;
 	}
 	public String intTypeToString (int type)
 	{
-		if (type == 0) return "Cleaner";
-		else return "Viewer";
+		if (type == 0) return "cleaner";
+		else return "viewer";
 	}
 	
 	//@Override
@@ -485,12 +536,6 @@ public class FactoredAgent //implements AgentInterface{
 		return this.currentState;
 	}
 	
-	//@Override
-	// getter for agentId
-	public int getAgentId()
-	{
-		return this.agentId;
-	}
 	
 	//public String getAgentType()
 	//{
@@ -499,9 +544,9 @@ public class FactoredAgent //implements AgentInterface{
 	
 	//@Override
 	// setter for debugging
-	public void setCurrentState(Map<Integer, Pair<Integer,Integer>>  q)
+	public void setCurrentState(Map<Integer, Pair<Integer,Integer>>  s)
 	{
-		this.currentState = q;
+		this.currentState = s;
 	}
 	
 	//@Override
@@ -570,19 +615,28 @@ public class FactoredAgent //implements AgentInterface{
 	// conversions for action names, use the ones of the environment
 	
 	// unit testing 
-	public static void main (String [] args)
+	public static void main (String [] args) throws NoFreeSpaceException, OccupiedCellException
 	{
 		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
-		
+		env.initTransitionProbs(0.99);
 		//environment.printTransitionTable();
 		//environment.printRewards();
-		Pair<Integer, Integer> state = 
-				new Pair<Integer, Integer>(env.getFirstSize()-1,env.getSecondSize()-1);
-		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, state, 0);
+		// create the list of agent types
+		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
+		List<Agent> agents = new ArrayList<Agent>();
+		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");agentTypes.put(2, "cleaner");
+		Map<Integer, Pair<Integer, Integer>> initLocations = env.initAgentLocations(agentTypes);
+		for(Integer agentId : initLocations.keySet()){
+			Pair<Integer, Integer> loc = initLocations.get(agentId);
+			String type = agentTypes.get(agentId);
+			agents.add(new Agent(env, type, 0.1, 0.9, loc, agentId));
+		}
+		
+		FactoredAgent agent = new FactoredAgent(env, 0.1, 0.9, initLocations, agents);
 		//agent.printTransitionTableenvironment();
+		
 		agent.printQtable();
 		agent.printVisittable();
-		System.out.println("=================");
 		//agent.single_step(agent.getCurrentState(),agent.environment.decodeAction("right"));
 		//agent.single_step(agent.getCurrentState());
 		//agent.single_run(agent.getCurrentState());
@@ -593,7 +647,7 @@ public class FactoredAgent //implements AgentInterface{
 		{
 			agent.resetQtable();
 			agent.resetVisittable();
-			agent.multiple_runs(runs, agent.getCurrentState(), env);	
+			agent.multiple_runs(runs, agent.getCurrentState());	
 			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
 			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
 		}
@@ -602,7 +656,6 @@ public class FactoredAgent //implements AgentInterface{
 
 	//@Override
 	public void printTransitionTableWorld() {
-		// TODO Auto-generated method stub
 		
 	}
 
