@@ -306,6 +306,22 @@ public class FactoredAgent //implements AgentInterface{
 	//@Override
 	public void single_run (Map<Integer, Pair<Integer,Integer>>  state, int maxruns, int currentrun) 
 	{
+		try {
+			// first clear all agents' locations and then insert, to avoid conflicts
+			for(Integer agentId : state.keySet()){
+				this.environment.clearAgentLocation(agentId);
+			}
+			for(Integer agentId : state.keySet()){
+				Pair<Integer, Integer> location = state.get(agentId);
+				this.environment.setAgentLocation(agentId, location);
+			}
+		} catch (OccupiedCellException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+		
 		Map<Integer, Pair<Integer,Integer>> current_state = new HashMap<Integer, Pair<Integer,Integer>> (); 
 		current_state.putAll(state); 
 		
@@ -645,21 +661,33 @@ public class FactoredAgent //implements AgentInterface{
 		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
 		List<Agent> agents = new ArrayList<Agent>();
 		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");//agentTypes.put(2, "cleaner");
-		Map<Integer, Pair<Integer, Integer>> initLocations = env.initAgentLocations(agentTypes);
+		env.initAgentLocations(agentTypes);
+		
 		Map<Integer, Pair<Integer, Integer>> goalStates = new HashMap<Integer, Pair<Integer, Integer>>();
 		goalStates = env.getGoalStateFactoredAgent(agentTypes, "ghc.env");
 		
-		for(Integer agentId : initLocations.keySet()){
-			Pair<Integer, Integer> loc = initLocations.get(agentId);
+		// hardcode start positions
+		Map<Integer, Pair<Integer, Integer>> start_state = new HashMap<Integer, Pair<Integer, Integer>>();
+		start_state.put(0, new Pair<Integer, Integer>(2,2));
+		start_state.put(1, new Pair<Integer, Integer>(2,1));
+		
+		// first clear all agent locations from initAgentLocations
+		for(Integer agentId : start_state.keySet()){
+			env.clearAgentLocation(agentId);
+		}
+		
+		for(Integer agentId : start_state.keySet()){
+			Pair<Integer, Integer> loc = start_state.get(agentId);
 			String type = agentTypes.get(agentId);
 			agents.add(new Agent(env, type, 0.1, 0.9, loc, agentId));
+			env.setAgentLocation(agentId, loc);
 		}
 		
 		//goalStates = initLocations;
-		System.out.println("start state is " + initLocations.toString());
+		System.out.println("start state is " + start_state.toString());
 		System.out.println("goal state is " + goalStates.toString());
 		
-		FactoredAgent agent = new FactoredAgent(env, 0.1, 0.9, goalStates, initLocations, agents);
+		FactoredAgent agent = new FactoredAgent(env, 0.1, 0.9, start_state, goalStates, agents);
 		//agent.printTransitionTableenvironment();
 		
 		agent.printQtable();

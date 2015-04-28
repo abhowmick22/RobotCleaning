@@ -50,6 +50,10 @@ public interface Environment {
 	public List<Pair<Integer, Integer>> getFreeSpaces();
 	// pick the agent from current location and put it to it's destination
 	public void setAgentLocation(int agentId, Pair<Integer, Integer> destination) throws OccupiedCellException;
+	// clear an agent's location in this world
+	// doesn't need to be called by single agent
+	public void clearAgentLocation(int agentId);
+	
 	
 	/* ------------ These were added for compatibility with Yannis' version -----------------*/
 	// get list of all locations/states

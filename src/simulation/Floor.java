@@ -222,7 +222,7 @@ public class Floor implements Environment{
 		int width = this.dimensions.getFirst();
 		int height = this.dimensions.getSecond();
 		
-		// first clear all free spaces
+		// first reclaim all free spaces
 		for(int i=0 ; i<width; i++){
 			for(int j=0; j<height; j++){
 				if(this.grid[i][j].getCellType() == 2){
@@ -406,6 +406,7 @@ public class Floor implements Environment{
 					grid[dest][j].setCellType(2);		/* update dest cell info*/
 					grid[dest][j].setAgentId(agentId);
 					grid[i][j].setCellType(0);			/* update source cell info*/
+					this.freeSpaces.add(new Pair<Integer, Integer>(i, j));
 				}
 				break;
 			case "south":
@@ -417,6 +418,7 @@ public class Floor implements Environment{
 					grid[dest][j].setCellType(2);
 					grid[dest][j].setAgentId(agentId);
 					grid[i][j].setCellType(0);
+					this.freeSpaces.add(new Pair<Integer, Integer>(i, j));
 				}
 				break;
 			case "east":
@@ -428,6 +430,7 @@ public class Floor implements Environment{
 					grid[i][dest].setCellType(2);
 					grid[i][dest].setAgentId(agentId);
 					grid[i][j].setCellType(0);
+					this.freeSpaces.add(new Pair<Integer, Integer>(i, j));
 				}
 				break;
 			case "west":
@@ -439,6 +442,7 @@ public class Floor implements Environment{
 					grid[i][dest].setCellType(2);
 					grid[i][dest].setAgentId(agentId);
 					grid[i][j].setCellType(0);
+					this.freeSpaces.add(new Pair<Integer, Integer>(i, j));
 				}
 				break;
 			default:
@@ -664,9 +668,9 @@ public class Floor implements Environment{
 													destination.getSecond()));
 		}
 		Pair<Integer, Integer> currLocation = this.agentLocations.get(agentId);
-		// this location should now become empty
 		//System.out.println(currLocation.toString());
 		this.grid[currLocation.getFirst()][currLocation.getSecond()].setCellType(0);
+		this.freeSpaces.add(new Pair<Integer, Integer>(currLocation.getFirst(), currLocation.getSecond()));
 		// this location should also be made empty
 		this.grid[currLocation.getFirst()][currLocation.getSecond()].setClean();
 		Cell dest = this.grid[destination.getFirst()][destination.getSecond()];
@@ -678,6 +682,21 @@ public class Floor implements Environment{
 		currLocation = this.agentLocations.get(agentId);
 		currLocation.setFirst(destination.getFirst());
 		currLocation.setSecond(destination.getSecond());
+		
+	}
+
+	// this just clears the agent location, akin to lifting it up in the air
+	// while we rearrange the positions. This does not remove the other state 
+	// associated with the agent
+	@Override
+	public void clearAgentLocation(int agentId) {
+		// free this location
+		Pair<Integer, Integer> location = this.agentLocations.get(agentId);
+		this.grid[location.getFirst()][location.getSecond()].setCellType(0);
+		this.grid[location.getFirst()][location.getSecond()].setClean();
+		
+		// remove all state associated with 
+		
 		
 	}
 	
