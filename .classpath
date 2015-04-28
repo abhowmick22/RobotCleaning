@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="src/simulation"/>
+	<classpathentry excluding="simulation/|tests/" kind="src" path="src"/>
+	<classpathentry kind="src" path="src/tests"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/home/abhishek/build/commons-math3-3.5/commons-math3-3.5.jar"/>
+	<classpathentry kind="lib" path="/Users/yannis/Desktop/15780/RobotCleaning/commons-math3-3.5.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
