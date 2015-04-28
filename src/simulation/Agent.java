@@ -17,10 +17,17 @@ public class Agent implements AgentInterface{
 	private static PrintWriter out;
 	// id of the agent
 	private int agentId;
+	// set to true so that agent ignores updating
+	// Q-table. This way, Q-table is always 0, epsilon 
+	// is also 0, so we are constantly choosing actions 
+	// randomly
+	private boolean actAsRandomAgent = false;
 
 	private final DecimalFormat df = new DecimalFormat("#.##");
-	private boolean debug = true;
-	private boolean debug2 = true;
+	private boolean debug = false;
+	private boolean debug2 = false;
+	private boolean debugConvergence = false;
+	private boolean saveStatistics = true;
 	
 	// These are unique to the agent
 	private Pair<Integer, Integer> currentState;
@@ -54,10 +61,17 @@ public class Agent implements AgentInterface{
 	private double gamma = 0.9; 
 	private double epsilon = 0.0;
 	
+	private double threshPercent = 5.0;
+	private double threshAbs = 1.0;
+	private int countStableQ = 0;
+	
 	private int k = 0;
 	// Q-table both global and local
 	// make it private and add setter methods
 	public double [][] Qtable = new double [0][0];// = new double [States.length][Actions.length];
+	public double [][] QtablePrev = new double [0][0];
+	public double [][] PrevDiffTable = new double [0][0];
+	
 	public double [][] QJointtable = new double [0][0]; // Joint q table
 	
 	// Alpha-Table: Tracks number of visits to each state
@@ -97,6 +111,22 @@ public class Agent implements AgentInterface{
 		for (int i=0; i< this.Qtable.length; i++)
 			for (int j=0; j<this.Qtable[i].length; j++)
 				this.Qtable[i][j] = 0.0;
+		
+		//Previous Q table init
+		
+				this.QtablePrev = new double[this.listOfStates.length][this.Actions.length];
+						
+				for (int i=0; i< this.QtablePrev.length; i++)
+					for (int j=0; j<this.QtablePrev[i].length; j++)
+						 this.QtablePrev[i][j] = 0.0;
+						
+						//Previous Difference Table
+				this.PrevDiffTable = new double[this.listOfStates.length][this.Actions.length];
+						
+				for (int i=0; i< this.PrevDiffTable.length; i++)
+					for (int j=0; j<this.PrevDiffTable[i].length; j++)
+						this.PrevDiffTable[i][j] = 0.0;
+
 		
 		//init visits-Table
 		this.Visittable = new double[this.listOfStates.length][this.Actions.length];
@@ -177,7 +207,6 @@ public class Agent implements AgentInterface{
 				{
 					random_index--;
 				}
-				
 			}
 		}
 		//System.out.println("random index after loop is " + random_index);
@@ -186,39 +215,6 @@ public class Agent implements AgentInterface{
 		return result;
 	}
 	
-	public void single_step (Pair<Integer, Integer> state, int action) 
-	{
-		Pair<Integer, Integer> current_state = state;
-		int next_action;
-		
-			//next_action = pick_next_action(current_state);
-			//next_action = action;
-			
-			// should we do the current_state update here, and 
-			// remove it from the Q_update, i.e., call Q_update
-			// with state,action,state' ? What if the environment.transitionTo
-			// returns two different results on the two calls? due to 
-			// stochastic transitions?
-			//Q_update (current_state,next_action);
-			//current_state = this.environment.transitionTo(current_state, next_action);
-		
-	}
-	
-	public void single_step (Pair<Integer, Integer> state) 
-	{
-		Pair<Integer, Integer> current_state = state;
-		int next_action;
-		
-			//next_action = pick_next_action(current_state);
-			// should we do the current_state update here, and 
-			// remove it from the Q_update, i.e., call Q_update
-			// with state,action,state' ? What if the environment.transitionTo
-			// returns two different results on the two calls? due to 
-			// stochastic transitions?
-			//Q_update (current_state,next_action);
-			//current_state = this.environment.transitionTo(current_state, next_action);
-		
-	}
 	
 	
 	@Override
@@ -233,7 +229,8 @@ public class Agent implements AgentInterface{
 			e1.printStackTrace();
 		}
 		//this.setCurrentState(state);
-		System.out.println("start state is " + state.toString() + 
+		if (debug)
+			System.out.println("start state is " + state.toString() + 
 				"agent's location is " + this.getCurrentState().toString());
 
 		Pair<Integer, Integer> current_state = state.copy();
@@ -246,39 +243,31 @@ public class Agent implements AgentInterface{
 		int next_action;
 		
 		//Pair goal = new Pair(2,2);
-		//if(debug2){
+		if(debug2){
 			System.out.println("Scenario starts =========== ");
 			System.out.println("the goal state is " + this.getGoalState().toString());
-		//}
+		}
 		while (!current_state.equals(this.getGoalState())) //this.goalState)
+		//while (k<=1000) // How many steps in one day is decided by no of 
+		//states(3x3) and no of actions(6), take a loose bound to be sure!!
 		{
 			this.environment.forwardTime();
 			int currentrun_i = currentrun;
 			int maxruns_i = maxruns;
 			
-				//System.out.print("current state = "+current_state.print());
-				//System.out.print(" goal state = "+this.goalState.print());	
+			//System.out.print("current state = "+current_state.print());
+			//System.out.print(" goal state = "+this.goalState.print());	
 			//System.out.println("currentrun: "+currentrun_i);
 			next_action = pick_next_action(current_state,maxruns_i,currentrun_i);
 			//epsilon = epsilon/(double)k;
 			
-			//if (debug)
-				//System.out.println(" next action is "+next_action+" "+this.environment.getActionName(next_action));
+			if (debug)
+				System.out.println(" next action is "+next_action+" "+this.environment.getActionName(next_action));
 			// should we do the current_state update here, and 
 			// remove it from the Q_update, i.e., call Q_update
 			// with state,action,state' ? What if the environment.transitionTo
 			// returns two different results on the two calls? due to 
 			// stochastic transitions?
-			/*if (next_action == 3) 
-			{	
-				Pair temp = new Pair(1,0);
-				current_state.print();
-				if (current_state.equals(temp))
-					end_state = this.environment.transitionTo(current_state, next_action);
-				else 
-					end_state = this.environment.transitionTo(new Pair(current_state.getX(), current_state.getY()), next_action);
-			}			
-			else*/		
 			
 			/*------------------- A wrapper for the interface --------------*/
 			Map<Integer, Pair<Integer, Integer>> s = new HashMap<Integer, Pair<Integer, Integer>>();
@@ -304,10 +293,23 @@ public class Agent implements AgentInterface{
 				//System.out.println("end state is "+end_state.print());
 			
 			//First update Q-value then visits to calculate alpha based on previous visits
-			Q_update (current_state,next_action,end_state);
+			boolean converged = false;
+			
+			// if we are not an agent acting randomly
+			// then makes sense to check the Q-tables for 
+			// convergence
+			if (!actAsRandomAgent)
+			{
+				if(countStableQ>=4 && currentrun>0)
+				{
+					//System.out.println ("Sanity check on run "+(currentrun-1));
+					converged = true;
+				}
+			}
+			Q_update (current_state,next_action,end_state,currentrun,converged);
 			A_update (current_state,next_action);
 			//if(debug2)
-			System.out.println(current_state.print() +"-> "+this.environment.getActionName(next_action)+"->"+end_state.print());
+			//System.out.println(current_state.print() +"-> "+this.environment.getActionName(next_action)+"->"+end_state.print());
 			current_state = end_state;
 			//current_state = this.environment.transitionTo(currentState, next_action);
 			k= k+1;
@@ -317,10 +319,145 @@ public class Agent implements AgentInterface{
 			
 		}
 		
+		
+		// Start the comparison of the Q-tables
+		//
+		boolean differenceFlag = true;
+		boolean breakOuterLoop = false;
+		//Q-table convergence check
+		/*for (int i=0; i< this.Qtable.length; i++)
+		{
+			for (int j=0; j<this.Qtable[i].length; j++) 
+			{   
+				if(currentrun>9500)
+					differenceFlag = true;
+		        double currentDiff = Math.floor(Math.abs(Qtable[i][j]-QtablePrev[i][j]));
+		        double percentDiff = 0.0;
+		        if(currentrun>0)
+		        {
+		        if(PrevDiffTable[i][j] == 0.0 && currentDiff!=0.0)
+		        	percentDiff = 1000000.0;// a very large number
+		        else if (Math.abs((currentDiff-PrevDiffTable[i][j])) == 0.0) percentDiff = 0.0;
+		        else percentDiff = 100.0*(Math.abs(currentDiff-PrevDiffTable[i][j])/PrevDiffTable[i][j]);
+		        if((percentDiff) >= threshPercent)  //%change in difference to be considered as not changed 
+		        {   
+		        	
+		        	differenceFlag = false;
+		        }
+		        }		        
+		        
+		        	        
+		       System.out.println(" perdent diff is" + percentDiff );
+		      //update the PrevDiffTable and currTable
+		        PrevDiffTable[i][j] = currentDiff;
+		        QtablePrev[i][j] = Qtable[i][j];
+			}
+		}
+		//System.out.println(" difference flag is" + differenceFlag);
+		
+		if(differenceFlag = false)
+        {
+            countStableQ = countStableQ+1;
+        }
+		//if(differenceFlag == true && (currentrun>0)) // All values in cells did not change
+		if(countStableQ>4 && currentrun>0)
+		{
+			System.out.println("Q table converged");
+			System.out.println(" current run number" + currentrun);
+			
+			
+		}*/
+				
+		//update the QTablePrev
+		
+		/*for (int i=0; i< this.Qtable.length; i++)
+		{
+			for (int j=0; j<this.Qtable[i].length; j++) 
+			{
+				
+			}
+		}*/
+		
+		// -----> No need for following behavior 
+		// -----> if we are acting as random agent.
+		//        No need for convergence check
+		if (!actAsRandomAgent)
+		{
+			
+			
+		if (debugConvergence)
+			System.out.println(printQtable());
+		
+		for (int i=0; i< this.Qtable.length; i++)
+		{
+			for (int j=0; j<this.Qtable[i].length; j++) 
+			{   
+				/*if(currentrun>9500)
+					differenceFlag = true;*/
+				
+		        double currentDiff = Math.round((Math.abs(Qtable[i][j]-QtablePrev[i][j])));
+		        //double percentDiff = 0.0;
+		        if(currentrun>0)
+			        if(currentDiff > threshAbs)  //%change in difference to be considered as not changed 
+			        {   
+			        	if (debugConvergence)
+			        		System.out.println(" current diff is" + currentDiff );
+			        	differenceFlag = false;
+			        	breakOuterLoop = true;
+			        	break;
+			        }
+		       // System.out.println(" current diff is" + currentDiff );
+		        //QtablePrev[i][j] = Qtable[i][j];
+			}	
+			if(breakOuterLoop)
+				break;
+		}
+		
+		//update Q
+		for (int i=0; i< this.Qtable.length; i++)
+		{
+			for (int j=0; j<this.Qtable[i].length; j++) 
+			{ 
+				QtablePrev[i][j] = Qtable[i][j];
+			}
+		}
+		if (debugConvergence)
+		{
+			System.out.println(" difference flag is" + differenceFlag);
+			System.out.println(" current run number" + currentrun);
+		}
+		if(differenceFlag == true && currentrun>0)
+        {
+            countStableQ = countStableQ+1;
+        }
+		if (differenceFlag == false && currentrun>0)
+		{
+			countStableQ = 0; //reset counter
+		}
+		if (debugConvergence)
+			System.out.println(" CounterStableQ is" + countStableQ);
+		//if(differenceFlag == true && (currentrun>0)) // All values in cells did not change
+		if(countStableQ>=4 && currentrun>0)
+		{
+			System.out.print("Q table converged at ");
+			System.out.println(" current run number" + currentrun);
+		}
+		
+		
+		
+		//System.out.println(printQtable());
+		
+	}
+	// ------> Ends behavior skipped by random agent
+	// Close check for randomness
+	// the following are common for either random or not
+		
 		if(debug2)
+		{
 			System.out.println("Scenario ends =========== ");
-		//System.out.println("Total number visits:" + k);
-		//System.out.println("epsilon:" + epsilon);
+			System.out.println("Total number visits:" + k);
+			System.out.println("epsilon:" + epsilon);
+		}
 			
 	}
 	
@@ -331,60 +468,19 @@ public class Agent implements AgentInterface{
 		for (int i=0; i<count; i++)
 		{
 			single_run(state,count,i);
+			k=0;
 			//System.out.println("countrun: "+count);
 		}
 		
 	}
 	
 	@Override
+	// DEPRICATED
 	public void Q_update (Pair<Integer, Integer> currentState, int action)
-	{
-		
-		double currentQ = this.Qtable[this.environment.stateToIndex(currentState)][action];
-		double currentAlpha = 1/(this.Visittable[this.environment.stateToIndex(currentState)][action]+1.0);
-		//currentQ = (1-this.alpha)*currentQ;
-		// get the target state s'
-		
-		/*------------------- A wrapper for the interface --------------*/
-		Map<Integer, Pair<Integer, Integer>> s = new HashMap<Integer, Pair<Integer, Integer>>();
-		Map<Integer, String> a = new HashMap<Integer, String>();
-		Map<Integer, String> type = new HashMap<Integer, String>();
-		s.put(this.agentId, currentState);
-		a.put(this.agentId, this.environment.getActionName(action));
-		type.put(this.agentId, "cleaner");
-		
-		Pair<Integer, Integer> endState = null;
-		try {
-			endState = this.environment.getLocations(s, a, type).get(this.agentId);
-		} catch (InvalidActionException e) {
-			e.printStackTrace();
-			System.out.println("FOCK OFF!");
-		}
-		/*-------------------- Wrapper ends ---------------*/
-		
-		// get the reward of the end state s'
-		/* --------------Wrapper for getRewards-----------------*/
-		Map<Integer, Pair<Integer, Integer>> l = new HashMap<Integer, Pair<Integer, Integer>>();
-		Map<Integer, String> t = new HashMap<Integer, String>();
-		l.put(this.agentId, endState);
-		t.put(this.agentId, "cleaner");
-		double reward = this.environment.getRewards(l, t).get(this.agentId);
-		
-		// find the max value from the end state s'
-		//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
-		//double max_step = (double) Collections.max(temp);
-		double [] temp = this.Qtable[this.environment.stateToIndex(endState)].clone();
-		Arrays.sort(temp);
-		double max_step = temp[temp.length-1];
-		
-		// calculate new q-value
-		this.Qtable[this.environment.stateToIndex(currentState)][action] =  
-				currentQ + (currentAlpha*(reward + (this.gamma*max_step - currentQ) ));
-		//this.Qtable[0][0] = 1000.0;
-	}
+	{	}
 	
 	@Override
-	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState)
+	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState, int currentrun, boolean converged)
 	{
 		//if (debug)
 			//System.out.println("Updating");
@@ -403,20 +499,61 @@ public class Agent implements AgentInterface{
 		t.put(this.agentId, "cleaner");
 		double reward = this.environment.getRewards(l, t).get(this.agentId);
 		
-		// find the max value from the end state s'
-		//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
-		//double max_step = (double) Collections.max(temp);
-		double [] temp = this.Qtable[this.environment.stateToIndex(endState)].clone();
-		Arrays.sort(temp);
-		double max_step = temp[temp.length-1];
+		//Check if we have found a reward
+		// SOS 
+		// (assumes 1, manually re-adjust as you play with worlds)
+		if (reward > 0.0)
+		{
+			System.out.print("found reward in ");
+			System.out.print(k+" steps and in my ");
+			System.out.println(currentrun+"th run");
+			
+			if (saveStatistics)
+			{
+				PrintWriter out = null;
+				try {
+						out = new PrintWriter(new BufferedWriter(new 
+								FileWriter("Statistics.txt",true)));
+					
+					//out.print("found reward in ");
+					// print the current run, i.e., the day that you are in
+					//out.print(currentrun+"\t");//"th run");
+					// print the k, i.e., the steps that you have taken until 
+					// you exit the loop... e.g., the steps till you found the reward
+					out.print(k+"\t");//+" steps and in my ");
+					//	if (converged)
+					//		out.print("converged");
+					out.println();
+				}catch (IOException e) {
+				    System.err.println(e);
+				}finally{
+				    if(out != null){
+				        out.close();
+				    }
+				} 
+			}
+		}
+
+		// ------> If acting as random, no need to update
+		//         the Q-table -- we are not using it!
+		if (!actAsRandomAgent)
+		{
+			// find the max value from the end state s'
+			//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
+			//double max_step = (double) Collections.max(temp);
+			double [] temp = this.Qtable[this.environment.stateToIndex(endState)].clone();
+			Arrays.sort(temp);
+			double max_step = temp[temp.length-1];
+			
+			//Calculate alpha
+			//alpha = this.Visittable[this.environment.stateToIndex(endState)][action];
+			
+			// calculate new q-value
+			this.Qtable[this.environment.stateToIndex(currentState)][action] =  
+					currentQ + (currentAlpha*(reward + (this.gamma*max_step - currentQ) ));
+			//this.Qtable[0][0] = 1000.0;
+		}// ----> end of not needed behavior by random agent
 		
-		//Calculate alpha
-		//alpha = this.Visittable[this.environment.stateToIndex(endState)][action];
-		
-		// calculate new q-value
-		this.Qtable[this.environment.stateToIndex(currentState)][action] =  
-				currentQ + (currentAlpha*(reward + (this.gamma*max_step - currentQ) ));
-		//this.Qtable[0][0] = 1000.0;
 	}
 	
 	public void A_update (Pair<Integer, Integer> currentState, int action)
@@ -583,6 +720,17 @@ public class Agent implements AgentInterface{
 		    }
 		} 
 	}
+	
+	public void setEpsilon (double e)
+	{
+		this.epsilon = e;
+	}
+	
+	public boolean actsAsRandom ()
+	{
+		return this.actAsRandomAgent;
+	}
+	
 	// conversions for action names, use the ones of the environment
 	
 	// unit testing 
@@ -610,16 +758,61 @@ public class Agent implements AgentInterface{
 		//agent.single_run(agent.getCurrentState());
 		//System.out.println(agent.printQtable());
 		String s = " ============== ";
-		int runs = 5;
-		for (int i =0; i< 1; i++)
-		{
-			env.setAgentLocation(0, start_state);
-			agent.resetQtable();
-			agent.resetVisittable();
-			agent.multiple_runs(runs, agent.getCurrentState());	
-			agent.SaveToFileQ(s+"scenario "+i+" for "+runs+" runs"+s);
-			agent.SaveToFileVisits(s+"scenario "+i+" for "+runs+" runs"+s);
+		int runs = 300;
+		int trials = 1;
+		
+		// If our agent is acting as random, set the 
+		// epsilon to 0.0, so that we are always picking
+		// a value from the Q-table. The Q-table is always
+		// zero for random agent (i.e., never updated), thus
+		// agent acts completely randomly
+		if (!agent.actsAsRandom()) 
+			agent.setEpsilon(0.0);
+		
+		
+		// clear out the file to write a fresh
+		// run of trials
+		PrintWriter out = null;
+		try {
+			out = new PrintWriter(new BufferedWriter(new FileWriter("Statistics.txt")));
+		}catch (IOException e) {
+		    System.err.println(e);
+		}finally{
+		    if(out != null){
+		        out.close();
+		    }
 		}
+		// start the trials... 
+		// e.g., 10 trials for 30 runs each, means
+		// 10 times of 30 days training, each time,
+		// resetting the Q-table.
+		for (int i =0; i< trials; i++)
+		{
+			out = null;
+			try {
+				out = new PrintWriter(new BufferedWriter(new FileWriter("Statistics.txt",true)));
+				out.println("===============");
+				out.println("Trial = "+i);
+				out.println("===============");
+			}catch (IOException e) {
+			    System.err.println(e);
+			}finally{
+			    if(out != null){
+			        out.close();
+			    }
+			} 
+			for (int j =0; j<1; j++)
+			{
+				env.setAgentLocation(0, start_state);
+				agent.resetQtable();
+				agent.resetVisittable();
+				agent.multiple_runs(runs, agent.getCurrentState());	
+				agent.SaveToFileQ(s+"scenario "+j+" for "+runs+" runs"+s);
+				agent.SaveToFileVisits(s+"scenario "+j+" for "+runs+" runs"+s);
+			}
+		
+		}
+		
 	}
 
 	@Override

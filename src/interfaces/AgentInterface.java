@@ -27,7 +27,7 @@ public interface AgentInterface {
 	public void Q_update (Pair<Integer, Integer> currentState, int action);
 	
 	// update Q-table given a state, action, and end-state
-	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState);
+	public void Q_update (Pair<Integer, Integer> currentState, int action, Pair<Integer, Integer> endState, int currentrun, boolean converged);
 
 	// Print the Q-table
 	public String printQtable ();
