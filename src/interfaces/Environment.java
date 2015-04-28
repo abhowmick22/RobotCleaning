@@ -48,8 +48,8 @@ public interface Environment {
 	public void setLocationDirtProb(Pair<Integer, Integer> location, float prob);
 	// get a list of free spaces in the environment
 	public List<Pair<Integer, Integer>> getFreeSpaces();
-	// set agent location, useful for reset
-	//public void setAgentLocation(int agentId, Pair<Integer, Integer> location);
+	// pick the agent from current location and put it to it's destination
+	public void setAgentLocation(int agentId, Pair<Integer, Integer> destination) throws OccupiedCellException;
 	
 	/* ------------ These were added for compatibility with Yannis' version -----------------*/
 	// get list of all locations/states

@@ -224,37 +224,21 @@ public class Agent implements AgentInterface{
 	@Override
 	public void single_run (Pair<Integer, Integer> state, int maxruns, int currentrun) 
 	{
-		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
-		Map<Integer, Pair<Integer, Integer>> start = new HashMap<Integer, Pair<Integer, Integer>>();
-		Pair<Integer, Integer> start_state = new Pair<Integer, Integer>();
-		agentTypes.put(this.agentId, "cleaner");
-		
-		// reset the environment as well
-		try {
-			start = this.environment.initAgentLocations(agentTypes);
-		} catch (NoFreeSpaceException | OccupiedCellException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		start_state = start.get(this.agentId);
-		
+				
 		//env.setAgentLocation(0, start_state);
-		this.setCurrentState(start_state);
-		out.println("start state is " + start_state.toString() + 
-				"agent's location is " + this.getCurrentState().toString());
-		
 		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e1) {
+			this.environment.setAgentLocation(this.agentId, state);
+		} catch (OccupiedCellException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		
-		
-		//Pair<Integer, Integer> current_state = state.copy();
-		Pair<Integer, Integer> current_state = start_state.copy();
+		//this.setCurrentState(state);
+		System.out.println("start state is " + state.toString() + 
+				"agent's location is " + this.getCurrentState().toString());
+
+		Pair<Integer, Integer> current_state = state.copy();
+		//Pair<Integer, Integer> current_state = start_state.copy();
 		Pair<Integer, Integer> end_state;
-		
 		//System.out.println("currentrun: "+currentrun);
 		//System.out.println("maxrun: "+maxruns);
 		//if (debug)
@@ -262,21 +246,18 @@ public class Agent implements AgentInterface{
 		int next_action;
 		
 		//Pair goal = new Pair(2,2);
-		if(debug2){
+		//if(debug2){
 			System.out.println("Scenario starts =========== ");
 			System.out.println("the goal state is " + this.getGoalState().toString());
-		}
+		//}
 		while (!current_state.equals(this.getGoalState())) //this.goalState)
 		{
 			this.environment.forwardTime();
 			int currentrun_i = currentrun;
 			int maxruns_i = maxruns;
 			
-			if (debug)
-			{
 				//System.out.print("current state = "+current_state.print());
 				//System.out.print(" goal state = "+this.goalState.print());	
-			}
 			//System.out.println("currentrun: "+currentrun_i);
 			next_action = pick_next_action(current_state,maxruns_i,currentrun_i);
 			//epsilon = epsilon/(double)k;
@@ -323,11 +304,9 @@ public class Agent implements AgentInterface{
 				//System.out.println("end state is "+end_state.print());
 			
 			//First update Q-value then visits to calculate alpha based on previous visits
-			
 			Q_update (current_state,next_action,end_state);
 			A_update (current_state,next_action);
-			
-			if(debug2)
+			//if(debug2)
 			System.out.println(current_state.print() +"-> "+this.environment.getActionName(next_action)+"->"+end_state.print());
 			current_state = end_state;
 			//current_state = this.environment.transitionTo(currentState, next_action);
@@ -616,12 +595,13 @@ public class Agent implements AgentInterface{
 		
 		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
 		Map<Integer, Pair<Integer, Integer>> start = new HashMap<Integer, Pair<Integer, Integer>>();
-		Pair<Integer, Integer> start_state = new Pair<Integer, Integer>();
+		Pair<Integer, Integer> start_state = new Pair<Integer, Integer>(2, 2);
 		agentTypes.put(0, "cleaner");
 		
 		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, start_state, 0);
 		
 		env.initTransitionProbs(1.0);
+		env.initAgentLocations(agentTypes);
 		//agent.printTransitionTableenvironment();
 		agent.printQtable();
 		agent.printVisittable();
@@ -633,6 +613,7 @@ public class Agent implements AgentInterface{
 		int runs = 5;
 		for (int i =0; i< 1; i++)
 		{
+			env.setAgentLocation(0, start_state);
 			agent.resetQtable();
 			agent.resetVisittable();
 			agent.multiple_runs(runs, agent.getCurrentState());	

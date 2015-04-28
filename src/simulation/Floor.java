@@ -653,5 +653,32 @@ public class Floor implements Environment{
 		return result;
 		
 	}
+
+	// set an agent location one by one, can be used to reset or initialize
+	@Override
+	public void setAgentLocation(int agentId, Pair<Integer, Integer> destination) throws OccupiedCellException {
+		// TODO Auto-generated method stub
+		//System.out.println(destination.toString());
+		if(!this.agentLocations.containsKey(agentId)){
+			this.agentLocations.put(agentId, new Pair<Integer, Integer>(destination.getFirst(),
+													destination.getSecond()));
+		}
+		Pair<Integer, Integer> currLocation = this.agentLocations.get(agentId);
+		// this location should now become empty
+		//System.out.println(currLocation.toString());
+		this.grid[currLocation.getFirst()][currLocation.getSecond()].setCellType(0);
+		// this location should also be made empty
+		this.grid[currLocation.getFirst()][currLocation.getSecond()].setClean();
+		Cell dest = this.grid[destination.getFirst()][destination.getSecond()];
+		if(dest.getCellType()!=0)
+			throw new OccupiedCellException();
+		// place agent on destination
+		dest.setAgentId(agentId);
+		dest.setCellType(2);
+		currLocation = this.agentLocations.get(agentId);
+		currLocation.setFirst(destination.getFirst());
+		currLocation.setSecond(destination.getSecond());
+		
+	}
 	
 }
