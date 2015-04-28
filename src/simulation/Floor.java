@@ -46,13 +46,13 @@ public class Floor implements Environment{
 	private Pair<Integer, Integer>[] listOfStates;
 	
 	
-	private final double REWARD_CLEAN_WASTEFUL = -0.5;	// penalty for wasteful clean
-	private final double REWARD_CLEAN_USEFUL = 1.0;		// reward for useful clean
+	private final double REWARD_CLEAN_WASTEFUL = -50.0;	// penalty for wasteful clean
+	private final double REWARD_CLEAN_USEFUL = 100.0;		// reward for useful clean
 	private final double REWARD_MOTION = 0.0;				// no penalty on motion	
 	private final double REWARD_NO_MOTION = 0.0;			// no reward on no motion
 	
-	private final double REWARD_OBSERVE_DIRT_HERE = 100.0;
-	private final double REWARD_OBSERVE_DIRT_NEAR = 0.2;
+	private final double REWARD_OBSERVE_DIRT_HERE = 100.0;	// viewer
+	private final double REWARD_OBSERVE_DIRT_NEAR = 25.0;
 	
 	private final int NORTH_INDEX = 0;
 	private final int SOUTH_INDEX = 1;
@@ -311,13 +311,13 @@ public class Floor implements Environment{
 		for(Integer agentId : locations.keySet()){
 			String agentType = agentTypes.get(agentId);
 			Pair<Integer, Integer> location = locations.get(agentId);
-			
+			float scale = this.grid[location.getFirst()][location.getSecond()].getDirtProb();
 			double reward = 0.0;
 			if(this.grid[location.getFirst()][location.getSecond()].isDirty()){
 				// get reward for observing dirt here
-				reward += REWARD_OBSERVE_DIRT_HERE;
+				reward += REWARD_OBSERVE_DIRT_HERE*scale;
 				if(agentType.equals("cleaner") && executingFunction.get(agentId)){	// a cleaner is cleaning at a dirty location
-					reward += REWARD_CLEAN_USEFUL;
+					reward += REWARD_CLEAN_USEFUL*scale;
 					this.grid[location.getFirst()][location.getSecond()].setClean();
 					this.executingFunction.put(agentId, false);
 				}
@@ -330,8 +330,11 @@ public class Floor implements Environment{
 			}
 			// get rewards for observation (doesn't matter if we do this before cleaning since
 			// we wouldn't have seen dirt due to the cleaner)
+			
+			/*	viewer doesn't have long range visibility
 			if(agentType.equals("viewer"))
-				reward += viewerObserve(location)*REWARD_OBSERVE_DIRT_NEAR;
+				reward += viewerObserve(location)*REWARD_OBSERVE_DIRT_NEAR*scale;
+			*/
 			rewards.put(agentId, reward);
 		}		
 		return rewards;
@@ -464,7 +467,7 @@ public class Floor implements Environment{
 				
 				float prob = grid[i][j].getDirtProb();
 				double rand = Math.random();
-				if(rand < prob)		grid[i][j].setDirty();
+				if(rand < 1.0)		grid[i][j].setDirty();
 			}
 		}
 		
