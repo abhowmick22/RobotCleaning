@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 
+import utils.CorruptedStateException;
 import utils.InvalidActionException;
 import utils.NoFreeSpaceException;
 import utils.OccupiedCellException;
@@ -92,12 +93,12 @@ public class Floor implements Environment{
 			
 			input.readLine();
 			input.readLine();
-			for(int i=0 ; i<height; i++){
+			for(int i=0 ; i<width; i++){
 				line = input.readLine();
 				String[] tokens = line.split(",");
 				
 				// number of cells returned should be equal to width
-				for(int j=0; j<width; j++){
+				for(int j=0; j<height; j++){
 					int type = Integer.parseInt(tokens[j]);
 					this.grid[i][j] = new Cell();
 					this.grid[i][j].setCellType(type);
@@ -218,6 +219,19 @@ public class Floor implements Environment{
 	// interesting initializations
 	public Map<Integer, Pair<Integer, Integer>> initAgentLocations(Map<Integer, String> agentTypes) 
 			throws NoFreeSpaceException, OccupiedCellException {
+		int width = this.dimensions.getFirst();
+		int height = this.dimensions.getSecond();
+		
+		// first clear all free spaces
+		for(int i=0 ; i<width; i++){
+			for(int j=0; j<height; j++){
+				if(this.grid[i][j].getCellType() == 2){
+					this.grid[i][j].setCellType(0);
+					freeSpaces.add(new Pair<Integer, Integer>(i, j));
+				}
+			}
+		}
+		
 		int numAgents = agentTypes.size();
 		int numFreeSpaces = this.freeSpaces.size();
 		
@@ -270,7 +284,7 @@ public class Floor implements Environment{
 			if(type.equals("viewer") && action.equals("clean"))
 				throw new InvalidActionException();		
 			
-			Pair<Integer, Integer> newLocation = null;
+			Pair<Integer, Integer> newLocation = new Pair<Integer, Integer>();
 			try {
 				// get the actual executed action (sampled from transition probability)
 				// side-effect : update AgentLocation and whether it is executing function
@@ -279,6 +293,9 @@ public class Floor implements Environment{
 			} catch (InvalidActionException e) {
 				e.printStackTrace();
 				System.out.print("This is not your personal property! You can't go ahead trying to do anything.");
+			} catch (CorruptedStateException e) {
+				// TODO Auto-generated catch block
+				System.out.println("Agent: i sent a bad location to the world.");
 			}
 		}
 		return newLocations;
@@ -358,9 +375,12 @@ public class Floor implements Environment{
 	
 	// return the agent location (new object) based on transition probability
 	private Pair<Integer, Integer> getAgentLocation(Pair<Integer, Integer> location, String action, 
-			int agentId, String agentType) throws InvalidActionException{
+			int agentId, String agentType) throws InvalidActionException, CorruptedStateException{
 	
 		Pair<Integer, Integer> currLocation = this.agentLocations.get(agentId);
+		if(!currLocation.equals(location))
+			throw new CorruptedStateException();
+		
 		if(action.equals("clean") || action.equals("observe")){		
 			this.executingFunction.put(agentId, true);			// set to executing action
 		}
@@ -368,14 +388,18 @@ public class Floor implements Environment{
 			int i = currLocation.getFirst();
 			int j = currLocation.getSecond();
 			int dest;
+			
 			String actualAction = null;
 			if(new HashSet<String>(Arrays.asList(motionActions)).contains(action ))
 				actualAction = this.transitionProbs.get(action).sample();
 			else
 				actualAction = action;
-				
 			switch(actualAction){
+			
 			case "north":
+				//i = currLocation.getFirst();
+				//j = currLocation.getSecond();
+				//System.out.println("i is " + i + " and j  is " + j);
 				dest = Math.max(i - 1, 0);
 				if(grid[dest][j].getCellType() == 0){	/* destination is free */
 					currLocation.setFirst(dest);		/* update robot location */
@@ -385,6 +409,8 @@ public class Floor implements Environment{
 				}
 				break;
 			case "south":
+				//i = currLocation.getFirst();
+				//j = currLocation.getSecond();
 				dest = Math.min(i + 1, dimensions.getFirst() - 1);
 				if(grid[dest][j].getCellType() == 0){	
 					currLocation.setFirst(dest);
@@ -394,6 +420,8 @@ public class Floor implements Environment{
 				}
 				break;
 			case "east":
+				//i = currLocation.getFirst();
+				//j = currLocation.getSecond();
 				dest = Math.min(j + 1, dimensions.getSecond() - 1);
 				if(grid[i][dest].getCellType() == 0){	
 					currLocation.setSecond(dest);
@@ -403,6 +431,8 @@ public class Floor implements Environment{
 				}
 				break;
 			case "west":
+				//i = currLocation.getFirst();
+				//j = currLocation.getSecond();
 				dest = Math.max(j - 1, 0);
 				if(grid[i][dest].getCellType() == 0){	
 					currLocation.setSecond(dest);

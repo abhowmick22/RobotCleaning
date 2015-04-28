@@ -13,12 +13,14 @@ import utils.Pair;
 
 public class Agent implements AgentInterface{
 	
+	
+	private static PrintWriter out;
 	// id of the agent
 	private int agentId;
 
 	private final DecimalFormat df = new DecimalFormat("#.##");
-	private boolean debug = false;
-	private boolean debug2 = false;
+	private boolean debug = true;
+	private boolean debug2 = true;
 	
 	// These are unique to the agent
 	private Pair<Integer, Integer> currentState;
@@ -50,7 +52,7 @@ public class Agent implements AgentInterface{
 	// initial alpha and gamma and initial epsilon for calculating the Q-table
 	private double alpha = 1;
 	private double gamma = 0.9; 
-	private double epsilon = 0.3;
+	private double epsilon = 0.0;
 	
 	private int k = 0;
 	// Q-table both global and local
@@ -72,6 +74,12 @@ public class Agent implements AgentInterface{
 	// constructor with normal inits
 	public Agent (Environment env, String type, double alpha, double gamma, Pair init_state, int agentId)
 	{
+		try {
+			out = new PrintWriter(new BufferedWriter(new FileWriter("dump", false)));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		this.agentId = agentId;
 		this.environment = env;
 		this.currentState = init_state;
@@ -97,8 +105,8 @@ public class Agent implements AgentInterface{
 				this.Visittable[i][j] = 0.0;
 		
 		if (debug){
-			System.out.println("Q-table initialized with size "+this.Qtable.length);
-		    System.out.println("Visited-table initialized with size "+this.Visittable.length);
+			out.println("Q-table initialized with size "+this.Qtable.length);
+		    out.println("Visited-table initialized with size "+this.Visittable.length);
 		}
 	}
 
@@ -150,7 +158,10 @@ public class Agent implements AgentInterface{
 			counter++;
 			index--;
 		}
-		int random_index = (int)(Math.random() * (counter + 1));
+		int random_index = (int)(Math.random()* (counter + 1));
+		//int random_index = (int)(Math.random()*counter + 1);
+		//out.println("counter before loop is " + counter + " for state " + state.toString());
+		//out.println("random index before loop is " + random_index + " for state " + state.toString());
 		
 		// find the index of the (random) max action and return it
 		for (int i=0;i<this.Qtable[this.environment.stateToIndex(state)].length; i++)
@@ -169,8 +180,9 @@ public class Agent implements AgentInterface{
 				
 			}
 		}
-		
+		//System.out.println("random index after loop is " + random_index);
 		}
+		//out.println("result is " + result + " for state " + state.toString());
 		return result;
 	}
 	
@@ -212,7 +224,35 @@ public class Agent implements AgentInterface{
 	@Override
 	public void single_run (Pair<Integer, Integer> state, int maxruns, int currentrun) 
 	{
-		Pair<Integer, Integer> current_state = state.copy();
+		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
+		Map<Integer, Pair<Integer, Integer>> start = new HashMap<Integer, Pair<Integer, Integer>>();
+		Pair<Integer, Integer> start_state = new Pair<Integer, Integer>();
+		agentTypes.put(this.agentId, "cleaner");
+		
+		// reset the environment as well
+		try {
+			start = this.environment.initAgentLocations(agentTypes);
+		} catch (NoFreeSpaceException | OccupiedCellException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		start_state = start.get(this.agentId);
+		
+		//env.setAgentLocation(0, start_state);
+		this.setCurrentState(start_state);
+		out.println("start state is " + start_state.toString() + 
+				"agent's location is " + this.getCurrentState().toString());
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		
+		//Pair<Integer, Integer> current_state = state.copy();
+		Pair<Integer, Integer> current_state = start_state.copy();
 		Pair<Integer, Integer> end_state;
 		
 		//System.out.println("currentrun: "+currentrun);
@@ -222,9 +262,10 @@ public class Agent implements AgentInterface{
 		int next_action;
 		
 		//Pair goal = new Pair(2,2);
-		if(debug2)
+		if(debug2){
 			System.out.println("Scenario starts =========== ");
-		
+			System.out.println("the goal state is " + this.getGoalState().toString());
+		}
 		while (!current_state.equals(this.getGoalState())) //this.goalState)
 		{
 			this.environment.forwardTime();
@@ -293,7 +334,7 @@ public class Agent implements AgentInterface{
 			k= k+1;
 			//
 			//epsilon = epsilon/(double)k;
-			epsilon = epsilon*0.999;
+			//epsilon = epsilon*0.999;
 			
 		}
 		
@@ -500,6 +541,8 @@ public class Agent implements AgentInterface{
 	@Override
 	public void resetQtable()
 	{
+		
+		
 		for (int i=0; i< this.Qtable.length; i++)
 			for (int j=0; j<this.Qtable[i].length; j++)
 				this.Qtable[i][j] = 0.0;
@@ -568,17 +611,17 @@ public class Agent implements AgentInterface{
 	{
 		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
 		
-		
 		//environment.printTransitionTable();
 		//environment.printRewards();
-		Pair<Integer, Integer> start_state = 
-				new Pair<Integer, Integer>(env.getFirstSize()-1,env.getSecondSize()-1);
-		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, start_state, 0);
 		
 		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
+		Map<Integer, Pair<Integer, Integer>> start = new HashMap<Integer, Pair<Integer, Integer>>();
+		Pair<Integer, Integer> start_state = new Pair<Integer, Integer>();
 		agentTypes.put(0, "cleaner");
-		env.initAgentLocations(agentTypes);
-		env.initTransitionProbs(0.99);
+		
+		Agent agent = new Agent(env, "cleaner", 0.1, 0.9, start_state, 0);
+		
+		env.initTransitionProbs(1.0);
 		//agent.printTransitionTableenvironment();
 		agent.printQtable();
 		agent.printVisittable();
@@ -587,7 +630,7 @@ public class Agent implements AgentInterface{
 		//agent.single_run(agent.getCurrentState());
 		//System.out.println(agent.printQtable());
 		String s = " ============== ";
-		int runs = 1500;
+		int runs = 5;
 		for (int i =0; i< 1; i++)
 		{
 			agent.resetQtable();

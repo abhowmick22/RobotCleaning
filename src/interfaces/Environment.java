@@ -48,6 +48,8 @@ public interface Environment {
 	public void setLocationDirtProb(Pair<Integer, Integer> location, float prob);
 	// get a list of free spaces in the environment
 	public List<Pair<Integer, Integer>> getFreeSpaces();
+	// set agent location, useful for reset
+	//public void setAgentLocation(int agentId, Pair<Integer, Integer> location);
 	
 	/* ------------ These were added for compatibility with Yannis' version -----------------*/
 	// get list of all locations/states
