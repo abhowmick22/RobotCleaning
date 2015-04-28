@@ -12,6 +12,7 @@ import interfaces.Environment;
 
 
 
+
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -83,6 +84,7 @@ public class FactoredAgent //implements AgentInterface{
 	public FactoredAgent (Environment env, 
 			double alpha, double gamma, 
 			Map<Integer, Pair<Integer,Integer>> init_state,
+			Map<Integer, Pair<Integer, Integer>> goal_state,
 			List<Agent> agents)
 	{
 		this.listOfAgents = new ArrayList<Agent>();
@@ -117,8 +119,8 @@ public class FactoredAgent //implements AgentInterface{
 				this.Visittable[i][j] = 0.0;
 		
 		if (debug)
-			System.out.println("Q-table initialized with size "+this.Qtable.length);
-		    System.out.println("Visited-table initialized with size "+this.Visittable.length);
+			System.out.println("Q-table initialized with length "+this.Qtable.length);
+		    System.out.println("Visited-table initialized with length "+this.Visittable.length);
 	}
 
 	
@@ -153,7 +155,6 @@ public class FactoredAgent //implements AgentInterface{
 			}
 			this.listOfStates.add(newFactoredState);
 		}
-		
 	}
 	
 	private void addActions (Map<Integer, List<String>> allActionsForAgent)
@@ -265,8 +266,15 @@ public class FactoredAgent //implements AgentInterface{
 		int index = (temp.length)-1;
 		while( (index-1 >= 0) && (temp[index-1] == temp[index] ))
 		{
-			counter++;
-			index--;
+			try {
+				Thread.sleep(100);
+				counter++;
+				index--;
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 		}
 		int random_index = (int)(Math.random() * (counter + 1));
 		
@@ -300,12 +308,10 @@ public class FactoredAgent //implements AgentInterface{
 	{
 		Map<Integer, Pair<Integer,Integer>> current_state = new HashMap<Integer, Pair<Integer,Integer>> (); 
 		current_state.putAll(state); 
-		Map<Integer, Pair<Integer,Integer>> end_state = new HashMap<Integer, Pair<Integer,Integer>> (); ;
+		
 		
 		//System.out.println("currentrun: "+currentrun);
 		//System.out.println("maxrun: "+maxruns);
-		if (debug)
-			System.out.print("current state = "+current_state.toString());
 		Map <Integer,String> next_action;
 		
 		//Pair goal = new Pair(2,2);
@@ -346,13 +352,21 @@ public class FactoredAgent //implements AgentInterface{
 			else*/		
 			
 			
-			if (debug)	
-				System.out.println("end state is "+end_state.toString());
+			
 			
 			//First update Q-value then visits to calculate alpha based on previous visits
+			Map<Integer, Pair<Integer,Integer>> end_state = new HashMap<Integer, Pair<Integer, Integer>>();
+			try {
+				Q_update(current_state,next_action,end_state);
+				A_update(current_state,next_action);
+				if (debug)	
+					System.out.println("end state is "+end_state.toString());
+			} catch (InvalidActionException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.out.println("tried illegal action");
+			}
 			
-			Q_update (current_state,next_action,end_state);
-			A_update (current_state,next_action);
 			
 			if(debug2)
 			System.out.println(current_state.toString() +"-> "+next_action.toString()+"->"+end_state.toString());
@@ -388,7 +402,7 @@ public class FactoredAgent //implements AgentInterface{
 	public void Q_update (Map<Integer, Pair<Integer,Integer>> currentState, Map <Integer,String> action)
 	{
 		if (debug)
-			System.out.println("Updating");
+			System.out.println("Updating Q");
 		
 		double currentQ = this.Qtable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)];
 		double currentAlpha = 1/(this.Visittable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)]+1.0);
@@ -397,6 +411,7 @@ public class FactoredAgent //implements AgentInterface{
 		
 		
 		Map<Integer, Pair<Integer,Integer>> endState = null;
+		
 		try {
 			endState = this.environment.getLocations(currentState, action, this.agentTypes);
 		} catch (InvalidActionException e) {
@@ -423,7 +438,9 @@ public class FactoredAgent //implements AgentInterface{
 	}
 	
 	//@Override
-	public void Q_update (Map<Integer, Pair<Integer,Integer>> currentState, Map <Integer,String> action, Map<Integer, Pair<Integer,Integer>> endState)
+	public void Q_update (Map<Integer, Pair<Integer,Integer>> currentState, 
+			Map <Integer,String> action, Map<Integer, Pair<Integer,Integer>> endState) 
+					throws InvalidActionException
 	{
 		if (debug)
 			System.out.println("Updating");
@@ -433,18 +450,21 @@ public class FactoredAgent //implements AgentInterface{
 		double currentAlpha = 1/(this.Visittable[this.factoredStateToIndex(currentState)][this.factoredActionToIndex(action)]+1.0);
 		//currentQ = (1-this.alpha)*currentQ;
 		// get the target state s'
-		//State endState = this.environment.transitionTo(currentState, action);
+		Map<Integer, Pair<Integer, Integer>> nextState = this.environment.getLocations(currentState, action, this.agentTypes);
+		for(Integer agentId : nextState.keySet()){
+			endState.put(agentId, nextState.get(agentId));
+		}
 		// get the reward of the end state s'
-		Map<Integer, Double> rewards = this.environment.getRewards(currentState, action);
+		Map<Integer, Double> rewards = this.environment.getRewards(endState, action);
+		
 		double reward = 0.0;
 		for (Double value : rewards.values())
 			reward+=value;
-		
 
 		// find the max value from the end state s'
 		//List temp = Arrays.asList(this.Qtable[this.environment.stateToIndex(endState)]);
 		//double max_step = (double) Collections.max(temp);
-		double [] temp = this.Qtable[this.factoredStateToIndex(currentState)].clone();
+		double [] temp = this.Qtable[this.factoredStateToIndex(endState)].clone();
 		Arrays.sort(temp);
 		double max_step = temp[temp.length-1];
 		
@@ -624,15 +644,22 @@ public class FactoredAgent //implements AgentInterface{
 		// create the list of agent types
 		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
 		List<Agent> agents = new ArrayList<Agent>();
-		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");agentTypes.put(2, "cleaner");
+		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");//agentTypes.put(2, "cleaner");
 		Map<Integer, Pair<Integer, Integer>> initLocations = env.initAgentLocations(agentTypes);
+		Map<Integer, Pair<Integer, Integer>> goalStates = new HashMap<Integer, Pair<Integer, Integer>>();
+		goalStates = env.getGoalStateFactoredAgent(agentTypes, "ghc.env");
+		
 		for(Integer agentId : initLocations.keySet()){
 			Pair<Integer, Integer> loc = initLocations.get(agentId);
 			String type = agentTypes.get(agentId);
 			agents.add(new Agent(env, type, 0.1, 0.9, loc, agentId));
 		}
 		
-		FactoredAgent agent = new FactoredAgent(env, 0.1, 0.9, initLocations, agents);
+		//goalStates = initLocations;
+		System.out.println("start state is " + initLocations.toString());
+		System.out.println("goal state is " + goalStates.toString());
+		
+		FactoredAgent agent = new FactoredAgent(env, 0.1, 0.9, goalStates, initLocations, agents);
 		//agent.printTransitionTableenvironment();
 		
 		agent.printQtable();
@@ -642,7 +669,7 @@ public class FactoredAgent //implements AgentInterface{
 		//agent.single_run(agent.getCurrentState());
 		//System.out.println(agent.printQtable());
 		String s = " ============== ";
-		int runs = 100;
+		int runs = 1;
 		for (int i =0; i< 1; i++)
 		{
 			agent.resetQtable();
@@ -659,9 +686,4 @@ public class FactoredAgent //implements AgentInterface{
 		
 	}
 
-	
-	
-	
-	
-	
 }

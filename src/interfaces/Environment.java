@@ -57,7 +57,10 @@ public interface Environment {
 	// get the height
 	public int getSecondSize();
 	// get the goal state as decided by environment (a high reward sink)
-	public Pair<Integer, Integer> getGoalState();
+	public Pair<Integer, Integer> getGoalStateSingleAgent();
+	// get the goal state for factored agent (specifying a goal state for each agent)
+	public Map<Integer, Pair<Integer, Integer>> getGoalStateFactoredAgent(
+			Map<Integer, String> agentTypes, String map);
 	// get actions allowed for agent in environment
 	public int[] getAvailableActionIndices(String agentType);
 	// get the names of actions allowed for this agent in environment

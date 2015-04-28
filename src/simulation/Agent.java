@@ -80,7 +80,7 @@ public class Agent implements AgentInterface{
 		this.listOfStates = env.getListOfStates();
 		this.Actions = this.environment.getAvailableActionIndices(this.TypeName);
 		this.ActionsNames = this.environment.getAvailableActions(this.TypeName);
-		this.goalState = env.getGoalState();
+		this.goalState = env.getGoalStateSingleAgent();
 		this.alpha = alpha;
 		this.gamma = gamma;
 		//init Q-table

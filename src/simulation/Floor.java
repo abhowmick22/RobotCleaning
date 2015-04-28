@@ -519,7 +519,7 @@ public class Floor implements Environment{
 	}
 
 	@Override
-	public Pair<Integer, Integer> getGoalState() {
+	public Pair<Integer, Integer> getGoalStateSingleAgent() {
 		return this.goalState;
 	}
 
@@ -595,6 +595,33 @@ public class Floor implements Environment{
 	public String[] getAllActions() {
 		Set<String> actions = this.actionsByName.keySet();
 		return actions.toArray(new String[actions.size()]);
+	}
+
+	@Override
+	public Map<Integer, Pair<Integer, Integer>> getGoalStateFactoredAgent(
+			Map<Integer, String> agentTypes, String map) {
+		// manually generated goal state for a given map and set of agents
+		Map<Integer, Pair<Integer, Integer>> result = new HashMap<Integer, Pair<Integer, Integer>>();
+		int numCleaners, numViewers;
+		numCleaners = 0;
+		numViewers = 0;
+		for(String type : agentTypes.values()){
+			if(type.equals("cleaner"))	numCleaners++;
+			else						numViewers++;
+		}
+		if(map.equals("ghc.env")){
+			if(numCleaners == 1 && numViewers == 1){
+				for(Integer agentId : agentTypes.keySet()){
+					if(agentTypes.get(agentId).equals("cleaner"))	
+						result.put(agentId, new Pair<Integer, Integer>(0,0));
+					else
+						result.put(agentId, new Pair<Integer, Integer>(1,1));
+				}
+			}
+				
+		}
+		return result;
+		
 	}
 	
 }
