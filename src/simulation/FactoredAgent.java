@@ -334,7 +334,8 @@ public class FactoredAgent //implements AgentInterface{
 		if(debug2)
 			System.out.println("Scenario starts =========== ");
 		
-		while (!current_state.equals(this.getGoalState())) //this.goalState)
+		//while (!current_state.equals(this.getGoalState())) //this.goalState)
+		while(k<10)
 		{
 			this.environment.forwardTime();
 			int currentrun_i = currentrun;
@@ -386,7 +387,10 @@ public class FactoredAgent //implements AgentInterface{
 			
 			if(debug2)
 			System.out.println(current_state.toString() +"-> "+next_action.toString()+"->"+end_state.toString());
-			current_state = end_state;
+			//current_state = end_state;
+			for(Integer agentId : end_state.keySet()){
+				current_state.put(agentId, end_state.get(agentId));
+			}
 			//current_state = this.environment.transitionTo(currentState, next_action);
 			k= k+1;
 			//

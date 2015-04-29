@@ -466,8 +466,8 @@ public class Floor implements Environment{
 				if(grid[i][j].isDirty())	continue;			// dirt doesn't disappear on its own
 				
 				float prob = grid[i][j].getDirtProb();
-				double rand = Math.random();
-				if(rand < 1.0)		grid[i][j].setDirty();
+				//double rand = Math.random();
+				if(prob > 0.0)		grid[i][j].setDirty();
 			}
 		}
 		

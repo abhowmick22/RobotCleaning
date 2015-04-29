@@ -247,8 +247,8 @@ public class Agent implements AgentInterface{
 			System.out.println("Scenario starts =========== ");
 			System.out.println("the goal state is " + this.getGoalState().toString());
 		}
-		while (!current_state.equals(this.getGoalState())) //this.goalState)
-		//while (k<=1000) // How many steps in one day is decided by no of 
+		//while (!current_state.equals(this.getGoalState())) //this.goalState)
+		while (k<=1000) // How many steps in one day is decided by no of 
 		//states(3x3) and no of actions(6), take a loose bound to be sure!!
 		{
 			this.environment.forwardTime();
@@ -310,7 +310,7 @@ public class Agent implements AgentInterface{
 			A_update (current_state,next_action);
 			//if(debug2)
 			//System.out.println(current_state.print() +"-> "+this.environment.getActionName(next_action)+"->"+end_state.print());
-			current_state = end_state;
+			current_state = end_state.copy();
 			//current_state = this.environment.transitionTo(currentState, next_action);
 			k= k+1;
 			//
