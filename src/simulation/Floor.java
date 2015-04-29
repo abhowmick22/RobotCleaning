@@ -121,9 +121,9 @@ public class Floor implements Environment{
 			
 			// declare list of states needed by the agent
 			listOfStates = new Pair [this.dimensions.getFirst()*this.dimensions.getSecond()];
-			for (int i=0; i<3;i++)
-				for (int j=0; j<3; j++)
-					listOfStates[(i*3)+j] = new Pair<Integer, Integer>(i,j); // create table of pairs
+			for (int i=0; i<height;i++)
+				for (int j=0; j<width; j++)
+					listOfStates[(i*height)+j] = new Pair<Integer, Integer>(i,j); // create table of pairs
 			
 			// update Actions by Index, should be done through a function
 			this.actionsByIndex = new HashMap<Integer, String>();

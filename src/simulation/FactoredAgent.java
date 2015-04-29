@@ -239,6 +239,7 @@ public class FactoredAgent //implements AgentInterface{
 		
 		// first sort the array
 		// max value will be last
+		System.out.println(this.factoredStateToIndex(state));
 		double [] temp = this.Qtable[this.factoredStateToIndex(state)].clone();
 		Arrays.sort(temp);
 		
@@ -266,14 +267,9 @@ public class FactoredAgent //implements AgentInterface{
 		int index = (temp.length)-1;
 		while( (index-1 >= 0) && (temp[index-1] == temp[index] ))
 		{
-			try {
-				Thread.sleep(100);
-				counter++;
-				index--;
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			//Thread.sleep(100);
+			counter++;
+			index--;
 			
 		}
 		int random_index = (int)(Math.random() * (counter + 1));
@@ -658,13 +654,13 @@ public class FactoredAgent //implements AgentInterface{
 	public static void main (String [] args) throws NoFreeSpaceException, OccupiedCellException
 	{
 		Environment env = new Floor(System.getProperty("user.dir") + "/src/" + args[0]);
-		env.initTransitionProbs(0.99);
+		env.initTransitionProbs(1.0);
 		//environment.printTransitionTable();
 		//environment.printRewards();
 		// create the list of agent types
 		Map<Integer, String> agentTypes = new HashMap<Integer, String>();
 		List<Agent> agents = new ArrayList<Agent>();
-		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");//agentTypes.put(2, "cleaner");
+		agentTypes.put(0, "viewer");agentTypes.put(1, "cleaner");agentTypes.put(2, "cleaner");
 		env.initAgentLocations(agentTypes);
 		
 		Map<Integer, Pair<Integer, Integer>> goalStates = new HashMap<Integer, Pair<Integer, Integer>>();
@@ -674,6 +670,7 @@ public class FactoredAgent //implements AgentInterface{
 		Map<Integer, Pair<Integer, Integer>> start_state = new HashMap<Integer, Pair<Integer, Integer>>();
 		start_state.put(0, new Pair<Integer, Integer>(2,2));
 		start_state.put(1, new Pair<Integer, Integer>(2,1));
+		start_state.put(2, new Pair<Integer, Integer>(1,2));
 		
 		// first clear all agent locations from initAgentLocations
 		for(Integer agentId : start_state.keySet()){
